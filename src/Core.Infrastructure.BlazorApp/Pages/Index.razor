@@ -1,0 +1,182 @@
+@page "/"
+@inject EventViewerState State
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Jasmin Event Viewer</PageTitle>
+
+<div class="top-bar">
+    <div class="container-fluid">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
+                <span class="text-muted small">@GetConnectionText()</span>
+            </div>
+            <div class="col">
+                <input type="text"
+                       class="form-control"
+                       placeholder="Stream URL (e.g., http://localhost:5000/v1/events/stream)"
+                       @bind="State.StreamUrl"
+                       @bind:event="oninput"
+                       disabled="@IsConnected" />
+            </div>
+            <div class="col-auto d-flex gap-2">
+                @if (IsConnected)
+                {
+                    <button class="btn btn-danger" @onclick="Disconnect">
+                        Disconnect
+                    </button>
+                }
+                else
+                {
+                    <button class="btn btn-primary" @onclick="Connect" disabled="@IsConnecting">
+                        @(IsConnecting ? "Connecting..." : "Connect")
+                    </button>
+                }
+                <button class="btn btn-outline-secondary" @onclick="ClearEvents">
+                    Clear
+                </button>
+            </div>
+        </div>
+        @if (State.LastError != null)
+        {
+            <div class="row mt-2">
+                <div class="col">
+                    <div class="alert alert-danger py-2 mb-0 small">
+                        @State.LastError
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="filter-bar">
+    <div class="container-fluid">
+        <div class="d-flex gap-4 align-items-center">
+            <ServerFilter />
+            <EventTypeFilter />
+            <span class="text-muted small ms-auto">
+                @FilteredEventCount / @TotalEventCount events
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="events-area" id="events-container" @onscroll="OnScroll">
+    @if (!FilteredEvents.Any())
+    {
+        <div class="empty-state">
+            @if (!State.Events.Any())
+            {
+                <div class="empty-state-icon">&#128225;</div>
+                <p>No events yet.</p>
+                <p class="text-muted small">Connect to a jasmin-server to start receiving events.</p>
+            }
+            else
+            {
+                <div class="empty-state-icon">&#128269;</div>
+                <p>No events match the current filters.</p>
+                <p class="text-muted small">Try adjusting the server or event type filters.</p>
+            }
+        </div>
+    }
+    else
+    {
+        @foreach (var evt in FilteredEvents)
+        {
+            <EventCard Event="evt" />
+        }
+    }
+</div>
+
+@code {
+    private bool _autoScroll = true;
+    private bool _isDisposed;
+    private bool _pendingScrollToBottom;
+
+    private bool IsConnected => State.ConnectionState == ConnectionState.Connected;
+    private bool IsConnecting => State.ConnectionState == ConnectionState.Connecting;
+
+    private IEnumerable<McpServerEvent> FilteredEvents => State.FilteredEvents;
+    private int FilteredEventCount => State.FilteredEvents.Count();
+    private int TotalEventCount => State.Events.Count;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += HandleStateChanged;
+        State.OnEventAdded += HandleEventAdded;
+        await State.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingScrollToBottom && !_isDisposed)
+        {
+            _pendingScrollToBottom = false;
+            await JS.InvokeVoidAsync("scrollHelper.scrollToBottom", "events-container");
+        }
+    }
+
+    private async Task Connect()
+    {
+        await State.ConnectAsync();
+    }
+
+    private async Task Disconnect()
+    {
+        await State.DisconnectAsync();
+    }
+
+    private void ClearEvents()
+    {
+        State.ClearEvents();
+    }
+
+    private async Task OnScroll()
+    {
+        if (_isDisposed) return;
+        _autoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "events-container");
+    }
+
+    private void HandleStateChanged()
+    {
+        if (_isDisposed) return;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleEventAdded()
+    {
+        if (_isDisposed) return;
+        if (_autoScroll)
+        {
+            _pendingScrollToBottom = true;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetConnectionClass() => State.ConnectionState switch
+    {
+        ConnectionState.Connected => "connected",
+        ConnectionState.Connecting => "connecting",
+        ConnectionState.Reconnecting => "connecting",
+        ConnectionState.Error => "error",
+        _ => "disconnected"
+    };
+
+    private string GetConnectionText() => State.ConnectionState switch
+    {
+        ConnectionState.Connected => "Connected",
+        ConnectionState.Connecting => "Connecting...",
+        ConnectionState.Reconnecting => "Reconnecting...",
+        ConnectionState.Error => "Error",
+        _ => "Disconnected"
+    };
+
+    public void Dispose()
+    {
+        _isDisposed = true;
+        State.OnChange -= HandleStateChanged;
+        State.OnEventAdded -= HandleEventAdded;
+    }
+}

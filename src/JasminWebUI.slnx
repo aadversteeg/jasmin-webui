@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="Core.Domain/Core.Domain.csproj" />
+    <Project Path="Core.Application/Core.Application.csproj" />
+    <Project Path="Core.Infrastructure.JasminClient/Core.Infrastructure.JasminClient.csproj" />
+    <Project Path="Core.Infrastructure.BlazorApp/Core.Infrastructure.BlazorApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="../tests/Tests.Domain/Tests.Domain.csproj" />
+    <Project Path="../tests/Tests.Application/Tests.Application.csproj" />
+    <Project Path="../tests/Tests.Infrastructure.JasminClient/Tests.Infrastructure.JasminClient.csproj" />
+    <Project Path="../tests/Tests.Infrastructure.BlazorApp/Tests.Infrastructure.BlazorApp.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,127 @@
+@using Core.Domain.Events
+
+<div class="event-card @GetEventClass()">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <span class="badge @GetBadgeClass() event-type-badge me-2">@GetEventTypeDisplay()</span>
+            <span class="event-server-name">@Event.ServerName</span>
+        </div>
+        <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
+    </div>
+    @if (Event.InstanceId != null || Event.RequestId != null)
+    {
+        <div class="text-muted small mt-1">
+            @if (Event.InstanceId != null)
+            {
+                <span class="me-3">Instance: <code>@TruncateId(Event.InstanceId)</code></span>
+            }
+            @if (Event.RequestId != null)
+            {
+                <span>Request: <code>@TruncateId(Event.RequestId)</code></span>
+            }
+        </div>
+    }
+    @if (Event.Errors?.Any() == true)
+    {
+        <div class="mt-2">
+            @foreach (var error in Event.Errors)
+            {
+                <div class="alert alert-danger py-1 px-2 mb-1 small">
+                    <strong>@error.Code:</strong> @error.Message
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required McpServerEvent Event { get; set; }
+
+    private string GetEventClass() => Event.EventType switch
+    {
+        McpServerEventType.StartFailed or
+        McpServerEventType.StopFailed or
+        McpServerEventType.ToolsRetrievalFailed or
+        McpServerEventType.PromptsRetrievalFailed or
+        McpServerEventType.ResourcesRetrievalFailed or
+        McpServerEventType.ToolInvocationFailed => "event-error",
+
+        McpServerEventType.Started or
+        McpServerEventType.ToolsRetrieved or
+        McpServerEventType.PromptsRetrieved or
+        McpServerEventType.ResourcesRetrieved or
+        McpServerEventType.ToolInvoked => "event-success",
+
+        McpServerEventType.Starting or
+        McpServerEventType.Stopping or
+        McpServerEventType.ToolsRetrieving or
+        McpServerEventType.PromptsRetrieving or
+        McpServerEventType.ResourcesRetrieving or
+        McpServerEventType.ToolInvoking or
+        McpServerEventType.ToolInvocationAccepted => "event-warning",
+
+        _ => "event-info"
+    };
+
+    private string GetBadgeClass() => Event.EventType switch
+    {
+        McpServerEventType.StartFailed or
+        McpServerEventType.StopFailed or
+        McpServerEventType.ToolsRetrievalFailed or
+        McpServerEventType.PromptsRetrievalFailed or
+        McpServerEventType.ResourcesRetrievalFailed or
+        McpServerEventType.ToolInvocationFailed => "bg-danger",
+
+        McpServerEventType.Started or
+        McpServerEventType.ToolsRetrieved or
+        McpServerEventType.PromptsRetrieved or
+        McpServerEventType.ResourcesRetrieved or
+        McpServerEventType.ToolInvoked => "bg-success",
+
+        McpServerEventType.Starting or
+        McpServerEventType.Stopping or
+        McpServerEventType.ToolsRetrieving or
+        McpServerEventType.PromptsRetrieving or
+        McpServerEventType.ResourcesRetrieving or
+        McpServerEventType.ToolInvoking or
+        McpServerEventType.ToolInvocationAccepted => "bg-warning text-dark",
+
+        _ => "bg-info"
+    };
+
+    private string GetEventTypeDisplay() => Event.EventType switch
+    {
+        McpServerEventType.Starting => "Starting",
+        McpServerEventType.Started => "Started",
+        McpServerEventType.StartFailed => "Start Failed",
+        McpServerEventType.Stopping => "Stopping",
+        McpServerEventType.Stopped => "Stopped",
+        McpServerEventType.StopFailed => "Stop Failed",
+        McpServerEventType.ConfigurationCreated => "Config Created",
+        McpServerEventType.ConfigurationUpdated => "Config Updated",
+        McpServerEventType.ConfigurationDeleted => "Config Deleted",
+        McpServerEventType.ToolsRetrieving => "Retrieving Tools",
+        McpServerEventType.ToolsRetrieved => "Tools Retrieved",
+        McpServerEventType.ToolsRetrievalFailed => "Tools Failed",
+        McpServerEventType.PromptsRetrieving => "Retrieving Prompts",
+        McpServerEventType.PromptsRetrieved => "Prompts Retrieved",
+        McpServerEventType.PromptsRetrievalFailed => "Prompts Failed",
+        McpServerEventType.ResourcesRetrieving => "Retrieving Resources",
+        McpServerEventType.ResourcesRetrieved => "Resources Retrieved",
+        McpServerEventType.ResourcesRetrievalFailed => "Resources Failed",
+        McpServerEventType.ToolInvocationAccepted => "Invocation Accepted",
+        McpServerEventType.ToolInvoking => "Invoking Tool",
+        McpServerEventType.ToolInvoked => "Tool Invoked",
+        McpServerEventType.ToolInvocationFailed => "Invocation Failed",
+        McpServerEventType.ServerCreated => "Server Created",
+        McpServerEventType.ServerDeleted => "Server Deleted",
+        _ => Event.EventType.ToString()
+    };
+
+    private string TruncateId(string id)
+    {
+        if (id.Length <= 12) return id;
+        return id[..8] + "...";
+    }
+}
