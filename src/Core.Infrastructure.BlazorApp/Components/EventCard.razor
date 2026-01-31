@@ -127,7 +127,7 @@
 
             <div class="mt-3">
                 <strong class="text-muted small">Raw Event Data:</strong>
-                <pre class="raw-event-data mt-1 mb-0">@GetRawEventJson()</pre>
+                <pre class="raw-event-data mt-1 mb-0">@GetFormattedRawJson()</pre>
             </div>
         </div>
     }
@@ -240,12 +240,25 @@
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        WriteIndented = true
     };
 
-    private string GetRawEventJson()
+    private string GetFormattedRawJson()
     {
-        return JsonSerializer.Serialize(Event, JsonOptions);
+        if (string.IsNullOrEmpty(Event.RawJson))
+        {
+            return "(no raw data available)";
+        }
+
+        // Pretty-print the raw JSON
+        try
+        {
+            var jsonDoc = JsonDocument.Parse(Event.RawJson);
+            return JsonSerializer.Serialize(jsonDoc, JsonOptions);
+        }
+        catch
+        {
+            return Event.RawJson;
+        }
     }
 }

@@ -113,7 +113,7 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
             var eventDto = JsonSerializer.Deserialize<EventResponseDto>(data, _jsonOptions);
             if (eventDto != null)
             {
-                var domainEvent = EventMapper.ToDomain(eventDto);
+                var domainEvent = EventMapper.ToDomain(eventDto, data);
                 EventReceived?.Invoke(this, domainEvent);
             }
         }

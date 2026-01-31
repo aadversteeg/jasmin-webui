@@ -11,4 +11,5 @@ public record McpServerEvent(
     string? InstanceId = null,
     string? RequestId = null,
     EventConfiguration? OldConfiguration = null,
-    EventConfiguration? Configuration = null);
+    EventConfiguration? Configuration = null,
+    string? RawJson = null);

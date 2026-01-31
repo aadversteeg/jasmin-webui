@@ -11,7 +11,7 @@ public static class EventMapper
     /// <summary>
     /// Maps an EventResponseDto to a domain McpServerEvent.
     /// </summary>
-    public static McpServerEvent ToDomain(EventResponseDto dto)
+    public static McpServerEvent ToDomain(EventResponseDto dto, string? rawJson = null)
     {
         var eventType = Enum.Parse<McpServerEventType>(dto.EventType, ignoreCase: true);
         var timestamp = DateTimeOffset.Parse(dto.Timestamp);
@@ -24,7 +24,8 @@ public static class EventMapper
             dto.InstanceId,
             dto.RequestId,
             dto.OldConfiguration != null ? ToDomain(dto.OldConfiguration) : null,
-            dto.Configuration != null ? ToDomain(dto.Configuration) : null);
+            dto.Configuration != null ? ToDomain(dto.Configuration) : null,
+            rawJson);
     }
 
     private static EventConfiguration ToDomain(EventConfigurationDto dto)
