@@ -9,15 +9,16 @@ namespace Core.Infrastructure.BlazorApp.Services;
 /// </summary>
 public class EventViewerState : IDisposable
 {
-    private const string StreamUrlKey = "jasmin-webui:stream-url";
+    private const string ServerUrlKey = "jasmin-webui:server-url";
+    private const string EventStreamPath = "/v1/events/stream";
     private const int MaxEvents = 1000;
-    private const string DefaultStreamUrl = "http://localhost:5000/v1/events/stream";
+    private const string DefaultServerUrl = "http://localhost:5000";
 
     private readonly IEventStreamService _eventStreamService;
     private readonly ILocalStorageService _localStorage;
     private readonly EventFilterState _filterState;
     private readonly List<McpServerEvent> _events = new();
-    private string _streamUrl = DefaultStreamUrl;
+    private string _serverUrl = DefaultServerUrl;
     private string? _lastError;
     private bool _isInitialized;
 
@@ -27,14 +28,14 @@ public class EventViewerState : IDisposable
     public EventFilterState FilterState => _filterState;
     public string? LastError => _lastError;
 
-    public string StreamUrl
+    public string ServerUrl
     {
-        get => _streamUrl;
+        get => _serverUrl;
         set
         {
-            if (_streamUrl != value)
+            if (_serverUrl != value)
             {
-                _streamUrl = value;
+                _serverUrl = value;
                 _ = SaveUrlAsync();
                 NotifyStateChanged();
             }
@@ -63,10 +64,10 @@ public class EventViewerState : IDisposable
     {
         if (_isInitialized) return;
 
-        var savedUrl = await _localStorage.GetAsync<string>(StreamUrlKey);
+        var savedUrl = await _localStorage.GetAsync<string>(ServerUrlKey);
         if (!string.IsNullOrWhiteSpace(savedUrl))
         {
-            _streamUrl = savedUrl;
+            _serverUrl = savedUrl;
         }
 
         await _filterState.InitializeAsync();
@@ -79,7 +80,14 @@ public class EventViewerState : IDisposable
     {
         await InitializeAsync();
         _lastError = null;
-        await _eventStreamService.StartAsync(_streamUrl);
+        var streamUrl = BuildStreamUrl(_serverUrl);
+        await _eventStreamService.StartAsync(streamUrl);
+    }
+
+    private static string BuildStreamUrl(string serverUrl)
+    {
+        var baseUrl = serverUrl.TrimEnd('/');
+        return baseUrl + EventStreamPath;
     }
 
     public async Task DisconnectAsync()
@@ -131,7 +139,7 @@ public class EventViewerState : IDisposable
 
     private async Task SaveUrlAsync()
     {
-        await _localStorage.SetAsync(StreamUrlKey, _streamUrl);
+        await _localStorage.SetAsync(ServerUrlKey, _serverUrl);
     }
 
     private void NotifyStateChanged() => OnChange?.Invoke();

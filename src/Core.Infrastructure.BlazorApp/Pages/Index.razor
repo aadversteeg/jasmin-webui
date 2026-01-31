@@ -15,8 +15,8 @@
             <div class="col">
                 <input type="text"
                        class="form-control"
-                       placeholder="Stream URL (e.g., http://localhost:5000/v1/events/stream)"
-                       @bind="State.StreamUrl"
+                       placeholder="Server URL (e.g., http://localhost:5000)"
+                       @bind="State.ServerUrl"
                        @bind:event="oninput"
                        disabled="@IsConnected" />
             </div>
