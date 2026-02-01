@@ -24,6 +24,7 @@ public partial class EventFilterViewModel : ViewModelBase
     private readonly ILogger<EventFilterViewModel> _logger;
     private readonly HashSet<string> _knownServers = new();
     private readonly HashSet<string> _selectedServers = new();
+    private readonly HashSet<string> _deletedServers = new();
     private readonly HashSet<McpServerEventType> _enabledEventTypes;
     private Dictionary<string, McpServerEventType[]>? _dynamicEventTypeGroups;
     private bool _isInitialized;
@@ -36,6 +37,7 @@ public partial class EventFilterViewModel : ViewModelBase
 
     public IReadOnlySet<string> KnownServers => _knownServers;
     public IReadOnlySet<string> SelectedServers => _selectedServers;
+    public IReadOnlySet<string> DeletedServers => _deletedServers;
     public IReadOnlySet<McpServerEventType> EnabledEventTypes => _enabledEventTypes;
 
     /// <summary>
@@ -181,6 +183,11 @@ public partial class EventFilterViewModel : ViewModelBase
         return _selectedServers.Contains(serverName);
     }
 
+    public bool IsServerDeleted(string serverName)
+    {
+        return _deletedServers.Contains(serverName);
+    }
+
     public void SetServerSelected(string serverName, bool selected)
     {
         var changed = selected
@@ -287,8 +294,14 @@ public partial class EventFilterViewModel : ViewModelBase
 
     public bool MatchesFilter(McpServerEvent evt)
     {
-        // If servers are selected, filter by them; otherwise show all
-        if (_selectedServers.Count > 0 && !_selectedServers.Contains(evt.ServerName))
+        // Must have at least one server selected to show events
+        if (_selectedServers.Count == 0)
+        {
+            return false;
+        }
+
+        // Event must be from a selected server
+        if (!_selectedServers.Contains(evt.ServerName))
         {
             return false;
         }
@@ -310,8 +323,10 @@ public partial class EventFilterViewModel : ViewModelBase
     {
         _knownServers.Clear();
         _selectedServers.Clear();
+        _deletedServers.Clear();
         OnPropertyChanged(nameof(KnownServers));
         OnPropertyChanged(nameof(SelectedServers));
+        OnPropertyChanged(nameof(DeletedServers));
     }
 
     /// <summary>
@@ -361,13 +376,57 @@ public partial class EventFilterViewModel : ViewModelBase
     {
         if (evt.EventType == McpServerEventType.ServerCreated)
         {
+            // If server was previously marked as deleted, unmark it
+            if (_deletedServers.Remove(evt.ServerName))
+            {
+                OnPropertyChanged(nameof(DeletedServers));
+            }
             AddKnownServer(evt.ServerName);
             _logger.LogDebug("Server {ServerName} added to filter via event", evt.ServerName);
         }
         else if (evt.EventType == McpServerEventType.ServerDeleted)
         {
-            RemoveServer(evt.ServerName);
-            _logger.LogDebug("Server {ServerName} removed from filter via event", evt.ServerName);
+            MarkServerAsDeleted(evt.ServerName);
+            _logger.LogDebug("Server {ServerName} marked as deleted via event", evt.ServerName);
+        }
+    }
+
+    /// <summary>
+    /// Marks a server as deleted but keeps it in the filter list.
+    /// The server will only be removed when events are cleared.
+    /// </summary>
+    public void MarkServerAsDeleted(string serverName)
+    {
+        if (_knownServers.Contains(serverName) && _deletedServers.Add(serverName))
+        {
+            OnPropertyChanged(nameof(DeletedServers));
+        }
+    }
+
+    /// <summary>
+    /// Removes deleted servers that no longer have any events.
+    /// Called when events are cleared.
+    /// </summary>
+    public void CleanupDeletedServers(ISet<string> serversWithEvents)
+    {
+        var serversToRemove = _deletedServers
+            .Where(server => !serversWithEvents.Contains(server))
+            .ToList();
+
+        foreach (var server in serversToRemove)
+        {
+            _deletedServers.Remove(server);
+            _knownServers.Remove(server);
+            _selectedServers.Remove(server);
+        }
+
+        if (serversToRemove.Count > 0)
+        {
+            _ = SaveServerFilterAsync();
+            OnPropertyChanged(nameof(KnownServers));
+            OnPropertyChanged(nameof(SelectedServers));
+            OnPropertyChanged(nameof(DeletedServers));
+            FilterChanged?.Invoke();
         }
     }
 
@@ -378,8 +437,9 @@ public partial class EventFilterViewModel : ViewModelBase
     {
         var removed = _knownServers.Remove(serverName);
         var deselected = _selectedServers.Remove(serverName);
+        var wasDeleted = _deletedServers.Remove(serverName);
 
-        if (removed || deselected)
+        if (removed || deselected || wasDeleted)
         {
             if (deselected)
             {
@@ -387,6 +447,7 @@ public partial class EventFilterViewModel : ViewModelBase
             }
             OnPropertyChanged(nameof(KnownServers));
             OnPropertyChanged(nameof(SelectedServers));
+            OnPropertyChanged(nameof(DeletedServers));
             FilterChanged?.Invoke();
         }
     }

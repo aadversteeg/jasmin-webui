@@ -353,7 +353,7 @@ public class EventFilterViewModelTests
         _sut.SelectedServers.Should().Contain("server-a");
     }
 
-    [Fact(DisplayName = "EFV-024: MatchesFilter should show all events when no servers selected")]
+    [Fact(DisplayName = "EFV-024: MatchesFilter should show no events when no servers selected")]
     public void EFV024()
     {
         // Arrange - no servers selected (but servers exist)
@@ -363,9 +363,9 @@ public class EventFilterViewModelTests
         var event1 = new McpServerEvent("server-a", McpServerEventType.Started, DateTimeOffset.Now);
         var event2 = new McpServerEvent("server-b", McpServerEventType.Started, DateTimeOffset.Now);
 
-        // Assert - when no servers selected, all events should pass the server filter
-        _sut.MatchesFilter(event1).Should().BeTrue();
-        _sut.MatchesFilter(event2).Should().BeTrue();
+        // Assert - when no servers selected, no events should match
+        _sut.MatchesFilter(event1).Should().BeFalse();
+        _sut.MatchesFilter(event2).Should().BeFalse();
     }
 
     [Fact(DisplayName = "EFV-025: AddKnownServer should auto-select new servers")]
@@ -447,7 +447,7 @@ public class EventFilterViewModelTests
         _sut.IsServerSelected("new-server").Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EFV-030: HandleServerEvent with ServerDeleted should remove server")]
+    [Fact(DisplayName = "EFV-030: HandleServerEvent with ServerDeleted should mark server as deleted")]
     public void EFV030()
     {
         // Arrange
@@ -459,9 +459,10 @@ public class EventFilterViewModelTests
         // Act
         _sut.HandleServerEvent(evt);
 
-        // Assert
-        _sut.KnownServers.Should().NotContain("old-server");
-        _sut.SelectedServers.Should().NotContain("old-server");
+        // Assert - server stays in known servers but is marked as deleted
+        _sut.KnownServers.Should().Contain("old-server");
+        _sut.IsServerDeleted("old-server").Should().BeTrue();
+        _sut.DeletedServers.Should().Contain("old-server");
     }
 
     [Fact(DisplayName = "EFV-031: RemoveServer should raise FilterChanged")]
@@ -556,5 +557,81 @@ public class EventFilterViewModelTests
 
         // Assert
         tracker.HasChanged(nameof(EventFilterViewModel.EventTypeGroups)).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-037: IsServerDeleted should return false for non-deleted servers")]
+    public void EFV037()
+    {
+        // Arrange
+        _sut.AddKnownServer("active-server");
+
+        // Assert
+        _sut.IsServerDeleted("active-server").Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "EFV-038: ServerCreated should unmark previously deleted server")]
+    public void EFV038()
+    {
+        // Arrange
+        _sut.AddKnownServer("server");
+        _sut.HandleServerEvent(new McpServerEvent("server", McpServerEventType.ServerDeleted, DateTimeOffset.Now));
+        _sut.IsServerDeleted("server").Should().BeTrue();
+
+        // Act - server is recreated
+        _sut.HandleServerEvent(new McpServerEvent("server", McpServerEventType.ServerCreated, DateTimeOffset.Now));
+
+        // Assert
+        _sut.IsServerDeleted("server").Should().BeFalse();
+        _sut.KnownServers.Should().Contain("server");
+    }
+
+    [Fact(DisplayName = "EFV-039: ClearKnownServers should clear deleted servers")]
+    public void EFV039()
+    {
+        // Arrange
+        _sut.AddKnownServer("server");
+        _sut.HandleServerEvent(new McpServerEvent("server", McpServerEventType.ServerDeleted, DateTimeOffset.Now));
+        _sut.DeletedServers.Should().Contain("server");
+
+        // Act
+        _sut.ClearKnownServers();
+
+        // Assert
+        _sut.DeletedServers.Should().BeEmpty();
+        _sut.KnownServers.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "EFV-040: CleanupDeletedServers should remove servers without events")]
+    public void EFV040()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-with-events");
+        _sut.AddKnownServer("server-without-events");
+        _sut.HandleServerEvent(new McpServerEvent("server-with-events", McpServerEventType.ServerDeleted, DateTimeOffset.Now));
+        _sut.HandleServerEvent(new McpServerEvent("server-without-events", McpServerEventType.ServerDeleted, DateTimeOffset.Now));
+
+        // Act - cleanup with only server-with-events having events
+        var serversWithEvents = new HashSet<string> { "server-with-events" };
+        _sut.CleanupDeletedServers(serversWithEvents);
+
+        // Assert
+        _sut.KnownServers.Should().Contain("server-with-events");
+        _sut.KnownServers.Should().NotContain("server-without-events");
+        _sut.DeletedServers.Should().Contain("server-with-events");
+        _sut.DeletedServers.Should().NotContain("server-without-events");
+    }
+
+    [Fact(DisplayName = "EFV-041: MarkServerAsDeleted should raise PropertyChanged for DeletedServers")]
+    public void EFV041()
+    {
+        // Arrange
+        _sut.AddKnownServer("server");
+        using var tracker = new PropertyChangedTracker(_sut);
+
+        // Act
+        _sut.MarkServerAsDeleted("server");
+
+        // Assert
+        tracker.HasChanged(nameof(EventFilterViewModel.DeletedServers)).Should().BeTrue();
     }
 }

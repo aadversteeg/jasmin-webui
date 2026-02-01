@@ -26,14 +26,18 @@
     <div class="filter-group-items">
         @foreach (var item in Items)
         {
-            <div class="form-check">
+            <div class="form-check" style="display: flex; align-items: center;">
                 <input class="form-check-input"
                        type="checkbox"
                        id="@item.Id"
                        checked="@item.IsSelected"
                        @onchange="@(e => item.OnSelectionChanged((bool)(e.Value ?? false)))" />
-                <label class="form-check-label" for="@item.Id">
-                    @item.Label
+                <label class="form-check-label" for="@item.Id" style="flex-grow: 1; display: flex; justify-content: space-between; @(item.IsDeleted ? "color: #6c757d; font-style: italic;" : "")">
+                    <span>@item.Label</span>
+                    @if (item.IsDeleted)
+                    {
+                        <span style="font-size: 0.65rem; color: #999; margin-left: 0.5rem;">deleted</span>
+                    }
                 </label>
             </div>
         }

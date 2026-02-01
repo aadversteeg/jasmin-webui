@@ -56,7 +56,8 @@
     private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(EventFilterViewModel.KnownServers) ||
-            e.PropertyName == nameof(EventFilterViewModel.SelectedServers))
+            e.PropertyName == nameof(EventFilterViewModel.SelectedServers) ||
+            e.PropertyName == nameof(EventFilterViewModel.DeletedServers))
         {
             InvokeAsync(StateHasChanged);
         }
@@ -100,7 +101,8 @@
             Id: $"server-{server}",
             Label: server,
             IsSelected: FilterVM.IsServerSelected(server),
-            OnSelectionChanged: selected => FilterVM.SetServerSelected(server, selected)
+            OnSelectionChanged: selected => FilterVM.SetServerSelected(server, selected),
+            IsDeleted: FilterVM.IsServerDeleted(server)
         ));
 
         return new[] { new FilterPanelGroup("Servers", items) };

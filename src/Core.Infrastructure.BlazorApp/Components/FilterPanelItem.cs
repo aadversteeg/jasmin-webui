@@ -4,7 +4,8 @@ public record FilterPanelItem(
     string Id,
     string Label,
     bool IsSelected,
-    Action<bool> OnSelectionChanged
+    Action<bool> OnSelectionChanged,
+    bool IsDeleted = false
 );
 
 public record FilterPanelGroup(
