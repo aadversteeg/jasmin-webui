@@ -3,6 +3,7 @@
 @inject IJSRuntime JS
 @inject SidePanelViewModel SidePanelVM
 @inject EventFilterViewModel FilterVM
+@inject ConfigurationViewModel ConfigVM
 
 <PageTitle>Jasmin Event Viewer</PageTitle>
 
@@ -13,27 +14,13 @@
                 <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
                 <span class="text-muted small">@GetConnectionText()</span>
             </div>
-            <div class="col">
-                <input type="text"
-                       class="form-control"
-                       placeholder="Server URL (e.g., http://localhost:5000)"
-                       @bind="ViewModel.ServerUrl"
-                       @bind:event="oninput"
-                       disabled="@IsConnected" />
-            </div>
+            <div class="col"></div>
             <div class="col-auto d-flex gap-2">
-                @if (IsConnected)
-                {
-                    <button class="btn btn-danger" @onclick="Disconnect">
-                        Disconnect
-                    </button>
-                }
-                else
-                {
-                    <button class="btn btn-primary" @onclick="Connect" disabled="@IsConnecting">
-                        @(IsConnecting ? "Connecting..." : "Connect")
-                    </button>
-                }
+                <button class="btn btn-outline-secondary"
+                        @onclick="OpenConfiguration"
+                        title="Configure server connection">
+                    Configure
+                </button>
                 <button class="btn btn-outline-secondary" @onclick="() => ViewModel.ClearEventsCommand.Execute(null)">
                     Clear
                 </button>
@@ -56,6 +43,8 @@
         }
     </div>
 </HeaderBar>
+
+<ConfigurationDialog />
 
 
 <div class="events-area" id="events-container" @onscroll="OnScroll">
@@ -100,6 +89,8 @@
         base.OnInitialized();
         ViewModel.EventAdded += HandleEventAdded;
         FilterVM.FilterChanged += HandleFilterChanged;
+        ConfigVM.UrlSaved += HandleUrlSaved;
+        ConfigVM.DisconnectRequested += HandleDisconnectRequested;
     }
 
     private void HandleFilterChanged()
@@ -117,14 +108,21 @@
         }
     }
 
-    private async Task Connect()
+    private async Task OpenConfiguration()
     {
-        await ViewModel.ConnectCommand.ExecuteAsync(null);
+        await ConfigVM.OpenCommand.ExecuteAsync(null);
     }
 
-    private async Task Disconnect()
+    private void HandleUrlSaved(string url)
     {
-        await ViewModel.DisconnectCommand.ExecuteAsync(null);
+        if (_isDisposed) return;
+        _ = ViewModel.HandleUrlSavedAsync(url);
+    }
+
+    private void HandleDisconnectRequested()
+    {
+        if (_isDisposed) return;
+        _ = ViewModel.HandleDisconnectAsync();
     }
 
     private async Task OnScroll()
@@ -168,6 +166,8 @@
             _isDisposed = true;
             ViewModel.EventAdded -= HandleEventAdded;
             FilterVM.FilterChanged -= HandleFilterChanged;
+            ConfigVM.UrlSaved -= HandleUrlSaved;
+            ConfigVM.DisconnectRequested -= HandleDisconnectRequested;
         }
         base.Dispose(disposing);
     }

@@ -36,4 +36,11 @@ public interface IEventStreamService
     /// Event raised when an error occurs.
     /// </summary>
     event EventHandler<string>? ErrorOccurred;
+
+    /// <summary>
+    /// Tests the connection to the specified server URL.
+    /// </summary>
+    /// <param name="serverUrl">The base server URL to test.</param>
+    /// <returns>A tuple indicating success and an optional error message.</returns>
+    Task<(bool Success, string? ErrorMessage)> TestConnectionAsync(string serverUrl);
 }

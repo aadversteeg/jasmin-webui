@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddJasminClient(this IServiceCollection services)
     {
+        services.AddScoped<HttpClient>();
         services.AddScoped<IEventStreamService, EventStreamService>();
         return services;
     }

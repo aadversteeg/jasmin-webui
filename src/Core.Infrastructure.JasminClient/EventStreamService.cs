@@ -12,7 +12,10 @@ namespace Core.Infrastructure.JasminClient;
 /// </summary>
 public class EventStreamService : IEventStreamService, IAsyncDisposable
 {
+    private const string EventStreamPath = "/v1/events/stream";
+
     private readonly IJSRuntime _jsRuntime;
+    private readonly HttpClient _httpClient;
     private readonly ILogger<EventStreamService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private DotNetObjectReference<EventStreamService>? _dotNetRef;
@@ -31,9 +34,10 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     /// <inheritdoc />
     public event EventHandler<string>? ErrorOccurred;
 
-    public EventStreamService(IJSRuntime jsRuntime, ILogger<EventStreamService> logger)
+    public EventStreamService(IJSRuntime jsRuntime, HttpClient httpClient, ILogger<EventStreamService> logger)
     {
         _jsRuntime = jsRuntime;
+        _httpClient = httpClient;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -130,6 +134,47 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
             _connectionState = state;
             ConnectionStateChanged?.Invoke(this, state);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<(bool Success, string? ErrorMessage)> TestConnectionAsync(string serverUrl)
+    {
+        try
+        {
+            var streamUrl = BuildStreamUrl(serverUrl);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var request = new HttpRequestMessage(HttpMethod.Get, streamUrl);
+            using var response = await _httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, null);
+            }
+
+            return (false, $"Server returned {(int)response.StatusCode} {response.ReasonPhrase}");
+        }
+        catch (TaskCanceledException)
+        {
+            return (false, "Connection timed out");
+        }
+        catch (HttpRequestException ex)
+        {
+            return (false, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing connection to {Url}", serverUrl);
+            return (false, ex.Message);
+        }
+    }
+
+    private static string BuildStreamUrl(string serverUrl)
+    {
+        var baseUrl = serverUrl.TrimEnd('/');
+        return baseUrl + EventStreamPath;
     }
 
     /// <inheritdoc />

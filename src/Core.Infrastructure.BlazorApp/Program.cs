@@ -17,6 +17,7 @@ builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
 
 // Register ViewModels (Blazing.Mvvm)
 builder.Services.AddMvvm();
+builder.Services.AddScoped<ConfigurationViewModel>();
 builder.Services.AddScoped<EventFilterViewModel>();
 builder.Services.AddScoped<EventViewerViewModel>();
 builder.Services.AddScoped<SidePanelViewModel>();

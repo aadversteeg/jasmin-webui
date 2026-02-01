@@ -76,12 +76,44 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         var savedUrl = await _localStorage.GetAsync<string>(ServerUrlKey);
         if (!string.IsNullOrWhiteSpace(savedUrl))
         {
-            SetProperty(ref _serverUrl, savedUrl, nameof(ServerUrl));
+            ServerUrl = savedUrl;
         }
 
         await FilterViewModel.InitializeAsync();
 
         _isInitialized = true;
+
+        // Auto-connect if URL is available
+        if (!string.IsNullOrWhiteSpace(ServerUrl))
+        {
+            await ConnectAsync();
+        }
+    }
+
+    /// <summary>
+    /// Handles URL saved from the configuration dialog.
+    /// Disconnects from current server if connected, then connects with new URL.
+    /// </summary>
+    public async Task HandleUrlSavedAsync(string url)
+    {
+        // Auto-disconnect from current server before connecting to new one
+        if (ConnectionState == ConnectionState.Connected)
+        {
+            await DisconnectAsync();
+        }
+        ServerUrl = url;
+        await ConnectAsync();
+    }
+
+    /// <summary>
+    /// Handles disconnect request from the configuration dialog.
+    /// Disconnects and clears the stored URL.
+    /// </summary>
+    public async Task HandleDisconnectAsync()
+    {
+        await DisconnectAsync();
+        ServerUrl = "";
+        await _localStorage.RemoveAsync(ServerUrlKey);
     }
 
     partial void OnServerUrlChanged(string value)
@@ -92,7 +124,6 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ConnectAsync()
     {
-        await OnInitializedAsync();
         LastError = null;
         var streamUrl = BuildStreamUrl(ServerUrl);
         await _eventStreamService.StartAsync(streamUrl);
