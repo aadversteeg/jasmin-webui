@@ -3,16 +3,30 @@ window.eventSourceHelper = {
     _connections: {},
     _counter: 0,
 
-    connect: function (url, dotNetHelper) {
+    connect: function (url, dotNetHelper, lastEventId) {
         const connectionId = ++this._counter;
         dotNetHelper._connectionId = connectionId;
-
-        console.log('[EventSource] Connecting to:', url);
 
         // Close any existing connection
         this.disconnect(connectionId);
 
-        const eventSource = new EventSource(url);
+        // Append lastEventId to URL if provided
+        let connectUrl = url;
+        if (lastEventId) {
+            const separator = url.includes('?') ? '&' : '?';
+            connectUrl = url + separator + 'lastEventId=' + encodeURIComponent(lastEventId);
+            console.log('[EventSource] Reconnecting from event ID:', lastEventId);
+        }
+
+        console.log('[EventSource] Connecting to:', connectUrl);
+
+        const eventSource = new EventSource(connectUrl);
+
+        // Store connection with lastEventId tracker
+        const connection = {
+            eventSource: eventSource,
+            lastEventId: lastEventId || null
+        };
 
         eventSource.onopen = function (event) {
             console.log('[EventSource] Connection opened');
@@ -24,16 +38,21 @@ window.eventSourceHelper = {
             if (eventSource.readyState === EventSource.CLOSED) {
                 dotNetHelper.invokeMethodAsync('OnDisconnected');
             } else if (eventSource.readyState === EventSource.CONNECTING) {
-                // Reconnecting - don't report as error yet
+                // Reconnecting - notify C# about reconnecting state
                 console.log('[EventSource] Reconnecting...');
+                dotNetHelper.invokeMethodAsync('OnReconnecting');
             } else {
                 dotNetHelper.invokeMethodAsync('OnError', 'Connection error occurred');
             }
         };
 
         eventSource.addEventListener('mcp-server-event', function (event) {
+            // Track the last event ID
+            if (event.lastEventId) {
+                connection.lastEventId = event.lastEventId;
+            }
             console.log('[EventSource] Received mcp-server-event:', event.data.substring(0, 100));
-            dotNetHelper.invokeMethodAsync('OnEventReceived', event.data);
+            dotNetHelper.invokeMethodAsync('OnEventReceived', event.data, event.lastEventId || '');
         });
 
         // Also listen for generic message events (fallback)
@@ -41,16 +60,23 @@ window.eventSourceHelper = {
             console.log('[EventSource] Received message:', event.data.substring(0, 100));
         };
 
-        this._connections[connectionId] = eventSource;
+        this._connections[connectionId] = connection;
 
         console.log('[EventSource] EventSource created, readyState:', eventSource.readyState);
+
+        return connectionId;
+    },
+
+    getLastEventId: function (connectionId) {
+        const connection = this._connections[connectionId];
+        return connection ? connection.lastEventId : null;
     },
 
     disconnect: function (connectionId) {
-        const eventSource = this._connections[connectionId];
-        if (eventSource) {
+        const connection = this._connections[connectionId];
+        if (connection) {
             console.log('[EventSource] Disconnecting:', connectionId);
-            eventSource.close();
+            connection.eventSource.close();
             delete this._connections[connectionId];
         }
     }

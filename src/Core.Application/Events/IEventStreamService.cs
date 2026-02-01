@@ -10,7 +10,10 @@ public interface IEventStreamService
     /// <summary>
     /// Starts streaming events from the specified endpoint.
     /// </summary>
-    Task StartAsync(string streamUrl, CancellationToken cancellationToken = default);
+    /// <param name="streamUrl">The SSE stream URL to connect to.</param>
+    /// <param name="lastEventId">Optional last event ID for reconnection. If provided, the server will replay events after this ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task StartAsync(string streamUrl, string? lastEventId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Stops the current event stream.
@@ -21,6 +24,12 @@ public interface IEventStreamService
     /// Gets the current connection state.
     /// </summary>
     ConnectionState ConnectionState { get; }
+
+    /// <summary>
+    /// Gets the last received event ID (timestamp in ISO 8601 format).
+    /// Used for reconnection to replay missed events.
+    /// </summary>
+    string? LastEventId { get; }
 
     /// <summary>
     /// Event raised when a new event is received.

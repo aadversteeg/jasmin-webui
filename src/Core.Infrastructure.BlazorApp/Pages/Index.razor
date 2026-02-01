@@ -141,23 +141,40 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private string GetConnectionClass() => ViewModel.ConnectionState switch
+    private string GetConnectionClass()
     {
-        ConnectionState.Connected => "connected",
-        ConnectionState.Connecting => "connecting",
-        ConnectionState.Reconnecting => "connecting",
-        ConnectionState.Error => "error",
-        _ => "disconnected"
-    };
+        // If no URL is configured, show unconfigured (gray)
+        if (string.IsNullOrWhiteSpace(ViewModel.ServerUrl))
+        {
+            return "unconfigured";
+        }
 
-    private string GetConnectionText() => ViewModel.ConnectionState switch
+        return ViewModel.ConnectionState switch
+        {
+            ConnectionState.Connected => "connected",
+            ConnectionState.Connecting => "connecting",
+            ConnectionState.Reconnecting => "connecting",
+            ConnectionState.Error => "error",
+            _ => "disconnected" // Flashing red when URL is set but disconnected
+        };
+    }
+
+    private string GetConnectionText()
     {
-        ConnectionState.Connected => "Connected",
-        ConnectionState.Connecting => "Connecting...",
-        ConnectionState.Reconnecting => "Reconnecting...",
-        ConnectionState.Error => "Error",
-        _ => "Disconnected"
-    };
+        if (string.IsNullOrWhiteSpace(ViewModel.ServerUrl))
+        {
+            return "Not configured";
+        }
+
+        return ViewModel.ConnectionState switch
+        {
+            ConnectionState.Connected => "Connected",
+            ConnectionState.Connecting => "Connecting...",
+            ConnectionState.Reconnecting => "Reconnecting...",
+            ConnectionState.Error => "Error",
+            _ => "Disconnected"
+        };
+    }
 
     protected override void Dispose(bool disposing)
     {

@@ -17,8 +17,13 @@
     background-color: #198754;
 }
 
-.connection-indicator.disconnected {
+.connection-indicator.unconfigured {
     background-color: #6c757d;
+}
+
+.connection-indicator.disconnected {
+    background-color: #dc3545;
+    animation: flash 1s infinite;
 }
 
 .connection-indicator.connecting {
@@ -33,6 +38,11 @@
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+}
+
+@keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
 
 .empty-state {

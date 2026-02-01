@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Core.Application.Events;
+using Core.Application.Storage;
 using Core.Domain.Events;
 using Core.Infrastructure.JasminClient.Dtos;
 using Microsoft.Extensions.Logging;
@@ -13,17 +14,24 @@ namespace Core.Infrastructure.JasminClient;
 public class EventStreamService : IEventStreamService, IAsyncDisposable
 {
     private const string EventStreamPath = "/v1/events/stream";
+    private const string LastEventIdKey = "jasmin-webui:last-event-id";
 
     private readonly IJSRuntime _jsRuntime;
     private readonly HttpClient _httpClient;
+    private readonly ILocalStorageService _localStorage;
     private readonly ILogger<EventStreamService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private DotNetObjectReference<EventStreamService>? _dotNetRef;
     private ConnectionState _connectionState = ConnectionState.Disconnected;
     private string _connectionId = Guid.NewGuid().ToString();
+    private string? _lastEventId;
+    private bool _lastEventIdLoaded;
 
     /// <inheritdoc />
     public ConnectionState ConnectionState => _connectionState;
+
+    /// <inheritdoc />
+    public string? LastEventId => _lastEventId;
 
     /// <inheritdoc />
     public event EventHandler<McpServerEvent>? EventReceived;
@@ -34,10 +42,15 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     /// <inheritdoc />
     public event EventHandler<string>? ErrorOccurred;
 
-    public EventStreamService(IJSRuntime jsRuntime, HttpClient httpClient, ILogger<EventStreamService> logger)
+    public EventStreamService(
+        IJSRuntime jsRuntime,
+        HttpClient httpClient,
+        ILocalStorageService localStorage,
+        ILogger<EventStreamService> logger)
     {
         _jsRuntime = jsRuntime;
         _httpClient = httpClient;
+        _localStorage = localStorage;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -46,7 +59,7 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task StartAsync(string streamUrl, CancellationToken cancellationToken = default)
+    public async Task StartAsync(string streamUrl, string? lastEventId = null, CancellationToken cancellationToken = default)
     {
         await StopAsync();
 
@@ -56,7 +69,24 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
 
         try
         {
-            await _jsRuntime.InvokeVoidAsync("eventSourceHelper.connect", cancellationToken, streamUrl, _dotNetRef);
+            // Load lastEventId from localStorage if not already loaded
+            if (!_lastEventIdLoaded)
+            {
+                _lastEventId = await _localStorage.GetAsync<string>(LastEventIdKey);
+                _lastEventIdLoaded = true;
+                if (!string.IsNullOrEmpty(_lastEventId))
+                {
+                    _logger.LogInformation("Loaded last event ID from storage: {LastEventId}", _lastEventId);
+                }
+            }
+
+            // Use provided lastEventId, or fall back to stored value for reconnection
+            var eventIdToUse = lastEventId ?? _lastEventId;
+            if (!string.IsNullOrEmpty(eventIdToUse))
+            {
+                _logger.LogInformation("Reconnecting with last event ID: {LastEventId}", eventIdToUse);
+            }
+            await _jsRuntime.InvokeVoidAsync("eventSourceHelper.connect", cancellationToken, streamUrl, _dotNetRef, eventIdToUse);
         }
         catch (Exception ex)
         {
@@ -102,6 +132,13 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     }
 
     [JSInvokable]
+    public void OnReconnecting()
+    {
+        _logger.LogInformation("EventSource reconnecting");
+        SetConnectionState(ConnectionState.Reconnecting);
+    }
+
+    [JSInvokable]
     public void OnError(string error)
     {
         _logger.LogError("EventSource error: {Error}", error);
@@ -110,8 +147,16 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     }
 
     [JSInvokable]
-    public void OnEventReceived(string data)
+    public void OnEventReceived(string data, string eventId)
     {
+        // Track the last event ID for reconnection
+        if (!string.IsNullOrEmpty(eventId) && eventId != _lastEventId)
+        {
+            _lastEventId = eventId;
+            // Save to localStorage (fire and forget)
+            _ = _localStorage.SetAsync(LastEventIdKey, eventId);
+        }
+
         try
         {
             var eventDto = JsonSerializer.Deserialize<EventResponseDto>(data, _jsonOptions);
