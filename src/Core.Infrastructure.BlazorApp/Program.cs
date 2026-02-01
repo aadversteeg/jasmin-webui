@@ -19,5 +19,6 @@ builder.Services.AddScoped<ILocalStorageService, LocalStorageService>();
 builder.Services.AddMvvm();
 builder.Services.AddScoped<EventFilterViewModel>();
 builder.Services.AddScoped<EventViewerViewModel>();
+builder.Services.AddScoped<SidePanelViewModel>();
 
 await builder.Build().RunAsync();

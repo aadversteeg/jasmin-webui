@@ -1,5 +1,36 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject SidePanelViewModel SidePanelVM
 
-<div class="event-viewer-container">
-    @Body
+<div class="app-container">
+    <div class="main-content">
+        @Body
+    </div>
+
+    @if (SidePanelVM.IsPanelOpen)
+    {
+        <SidePanel>
+            <p class="text-muted">Panel content placeholder</p>
+        </SidePanel>
+    }
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        SidePanelVM.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SidePanelViewModel.IsPanelOpen))
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        SidePanelVM.PropertyChanged -= OnViewModelPropertyChanged;
+    }
+}

@@ -1,0 +1,46 @@
+@inherits MvvmComponentBase<SidePanelViewModel>
+
+<div class="side-panel" style="width: @(ViewModel.PanelWidth)px;">
+    <div class="resize-handle" @onmousedown="StartResize"></div>
+
+    <HeaderBar>
+        <h5 class="mb-0">@ViewModel.PanelTitle</h5>
+    </HeaderBar>
+
+    <div class="panel-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = default!;
+
+    private int _startX;
+    private int _startWidth;
+
+    private async Task StartResize(MouseEventArgs e)
+    {
+        _startX = (int)e.ClientX;
+        _startWidth = ViewModel.PanelWidth;
+
+        await JS.InvokeVoidAsync("sidePanelResize.start",
+            DotNetObjectReference.Create(this), _startX, _startWidth);
+    }
+
+    [JSInvokable]
+    public void UpdateWidth(int deltaX)
+    {
+        var newWidth = _startWidth - deltaX;
+        ViewModel.SetWidth(newWidth);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void EndResize()
+    {
+    }
+}

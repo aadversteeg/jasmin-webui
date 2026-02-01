@@ -1,0 +1,9 @@
+.header-bar {
+    flex-shrink: 0;
+    padding: 1rem;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
