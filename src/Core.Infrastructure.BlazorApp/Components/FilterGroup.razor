@@ -1,0 +1,55 @@
+<div class="filter-group">
+    <div class="filter-group-header">
+        <span class="filter-group-title">@Title</span>
+        @if (OnSelectAll != null || OnDeselectAll != null)
+        {
+            <div class="d-flex align-items-center gap-1">
+                @if (OnSelectAll != null)
+                {
+                    <button type="button" class="btn btn-sm btn-link p-0 small" @onclick="OnSelectAll">
+                        All
+                    </button>
+                }
+                @if (OnSelectAll != null && OnDeselectAll != null)
+                {
+                    <span class="text-muted small">|</span>
+                }
+                @if (OnDeselectAll != null)
+                {
+                    <button type="button" class="btn btn-sm btn-link p-0 small" @onclick="OnDeselectAll">
+                        None
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    <div class="filter-group-items">
+        @foreach (var item in Items)
+        {
+            <div class="form-check">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="@item.Id"
+                       checked="@item.IsSelected"
+                       @onchange="@(e => item.OnSelectionChanged((bool)(e.Value ?? false)))" />
+                <label class="form-check-label" for="@item.Id">
+                    @item.Label
+                </label>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public IEnumerable<FilterPanelItem> Items { get; set; } = Enumerable.Empty<FilterPanelItem>();
+
+    [Parameter]
+    public Action? OnSelectAll { get; set; }
+
+    [Parameter]
+    public Action? OnDeselectAll { get; set; }
+}

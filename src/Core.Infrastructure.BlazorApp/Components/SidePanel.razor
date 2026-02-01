@@ -1,26 +1,76 @@
 @inherits MvvmComponentBase<SidePanelViewModel>
+@inject EventFilterViewModel FilterVM
 
 <div class="side-panel" style="width: @(ViewModel.PanelWidth)px;">
     <div class="resize-handle" @onmousedown="StartResize"></div>
 
     <HeaderBar>
-        <h5 class="mb-0">@ViewModel.PanelTitle</h5>
+        <div class="d-flex align-items-center justify-content-between w-100">
+            <h5 class="mb-0">Filters</h5>
+            <span class="badge bg-secondary">@FilteredCount / @TotalCount</span>
+        </div>
     </HeaderBar>
 
     <div class="panel-body">
-        @ChildContent
+        <FilterPanel Title="Servers"
+                     IsExpanded="@FilterVM.IsServerFilterExpanded"
+                     IsExpandedChanged="@(v => FilterVM.IsServerFilterExpanded = v)"
+                     OnSelectAll="@(() => FilterVM.SelectAllServersCommand.Execute(null))"
+                     OnDeselectAll="@(() => FilterVM.DeselectAllServersCommand.Execute(null))"
+                     Groups="@GetServerGroups()" />
+
+        <FilterPanel Title="Event Types"
+                     IsExpanded="@FilterVM.IsEventTypeFilterExpanded"
+                     IsExpandedChanged="@(v => FilterVM.IsEventTypeFilterExpanded = v)"
+                     OnSelectAll="@(() => FilterVM.EnableAllEventTypesCommand.Execute(null))"
+                     OnDeselectAll="@(() => FilterVM.DisableAllEventTypesCommand.Execute(null))"
+                     Groups="@GetEventTypeGroups()" />
     </div>
 </div>
 
 @code {
     [Parameter]
-    public RenderFragment? ChildContent { get; set; }
+    public int FilteredCount { get; set; }
+
+    [Parameter]
+    public int TotalCount { get; set; }
 
     [Inject]
     private IJSRuntime JS { get; set; } = default!;
 
     private int _startX;
     private int _startWidth;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        FilterVM.FilterChanged += OnFilterChanged;
+        FilterVM.PropertyChanged += OnPropertyChanged;
+    }
+
+    private void OnFilterChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(EventFilterViewModel.KnownServers) ||
+            e.PropertyName == nameof(EventFilterViewModel.SelectedServers))
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            FilterVM.FilterChanged -= OnFilterChanged;
+            FilterVM.PropertyChanged -= OnPropertyChanged;
+        }
+        base.Dispose(disposing);
+    }
 
     private async Task StartResize(MouseEventArgs e)
     {
@@ -42,5 +92,32 @@
     [JSInvokable]
     public void EndResize()
     {
+    }
+
+    private IEnumerable<FilterPanelGroup> GetServerGroups()
+    {
+        var items = FilterVM.KnownServers.Select(server => new FilterPanelItem(
+            Id: $"server-{server}",
+            Label: server,
+            IsSelected: FilterVM.IsServerSelected(server),
+            OnSelectionChanged: selected => FilterVM.SetServerSelected(server, selected)
+        ));
+
+        return new[] { new FilterPanelGroup("Servers", items) };
+    }
+
+    private IEnumerable<FilterPanelGroup> GetEventTypeGroups()
+    {
+        return EventFilterViewModel.EventTypeGroups.Select(group => new FilterPanelGroup(
+            Name: group.Key,
+            Items: group.Value.Select(eventType => new FilterPanelItem(
+                Id: $"event-type-{eventType}",
+                Label: EventFilterViewModel.GetEventTypeDisplayName(eventType),
+                IsSelected: FilterVM.IsEventTypeEnabled(eventType),
+                OnSelectionChanged: enabled => FilterVM.SetEventTypeEnabled(eventType, enabled)
+            )),
+            OnSelectAll: () => FilterVM.SelectEventTypeGroup(group.Key),
+            OnDeselectAll: () => FilterVM.DeselectEventTypeGroup(group.Key)
+        ));
     }
 }

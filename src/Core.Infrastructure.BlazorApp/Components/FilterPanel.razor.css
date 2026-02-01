@@ -1,0 +1,43 @@
+.filter-panel {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.filter-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    user-select: none;
+}
+
+.filter-panel-header:hover {
+    background-color: #e9ecef;
+}
+
+.expand-icon {
+    font-size: 0.75rem;
+    color: #6c757d;
+    width: 1rem;
+}
+
+.filter-panel-title {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.filter-panel-body {
+    padding: 0.75rem 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.form-check {
+    padding-left: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.form-check-label {
+    font-size: 0.85rem;
+}

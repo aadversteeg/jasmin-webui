@@ -57,30 +57,34 @@ public class EventFilterViewModelTests
         filterChangedRaised.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EFV-004: SelectedServer property change should raise PropertyChanged")]
+    [Fact(DisplayName = "EFV-004: SetServerSelected should raise PropertyChanged for SelectedServers")]
     public void EFV004()
     {
         // Arrange
+        _sut.AddKnownServer("test-server");
         using var tracker = new PropertyChangedTracker(_sut);
 
-        // Act
-        _sut.SelectedServer = "test-server";
+        // Act - deselect the server (it's auto-selected when added)
+        _sut.SetServerSelected("test-server", false);
 
         // Assert
-        tracker.HasChanged(nameof(EventFilterViewModel.SelectedServer)).Should().BeTrue();
+        tracker.HasChanged(nameof(EventFilterViewModel.SelectedServers)).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EFV-005: SelectedServer change should persist to local storage")]
+    [Fact(DisplayName = "EFV-005: SetServerSelected should persist to local storage")]
     public async Task EFV005()
     {
+        // Arrange
+        _sut.AddKnownServer("test-server");
+
         // Act
-        _sut.SelectedServer = "test-server";
+        _sut.SetServerSelected("test-server", false);
 
         // Assert (give async operation time to complete)
         await Task.Delay(50);
         _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:server-filter", "test-server"),
-            Times.Once);
+            x => x.SetAsync("jasmin-webui:server-filter", It.IsAny<List<string>>()),
+            Times.AtLeastOnce);
     }
 
     [Fact(DisplayName = "EFV-006: EnableAllEventTypesCommand should enable all types and notify")]
@@ -144,15 +148,16 @@ public class EventFilterViewModelTests
     public async Task EFV010()
     {
         // Arrange
+        var savedServers = new List<string> { "saved-server" };
         _localStorageMock
-            .Setup(x => x.GetAsync<string>("jasmin-webui:server-filter"))
-            .ReturnsAsync("saved-server");
+            .Setup(x => x.GetAsync<List<string>>("jasmin-webui:server-filter"))
+            .ReturnsAsync(savedServers);
 
         // Act
         await _sut.InitializeAsync();
 
         // Assert
-        _sut.SelectedServer.Should().Be("saved-server");
+        _sut.SelectedServers.Should().Contain("saved-server");
     }
 
     [Fact(DisplayName = "EFV-011: InitializeAsync should load saved event types")]
@@ -181,7 +186,10 @@ public class EventFilterViewModelTests
     public void EFV012()
     {
         // Arrange
-        _sut.SelectedServer = "server-a";
+        _sut.AddKnownServer("server-a");
+        _sut.AddKnownServer("server-b");
+        // Deselect server-b so only server-a is selected
+        _sut.SetServerSelected("server-b", false);
         _sut.SetEventTypeEnabled(McpServerEventType.Stopped, false);
 
         var matchingEvent = new McpServerEvent("server-a", McpServerEventType.Started, DateTimeOffset.Now);
@@ -199,7 +207,6 @@ public class EventFilterViewModelTests
     {
         // Arrange
         _sut.AddKnownServer("server-a");
-        _sut.SelectedServer = "server-a";
         using var tracker = new PropertyChangedTracker(_sut);
 
         // Act
@@ -207,7 +214,159 @@ public class EventFilterViewModelTests
 
         // Assert
         _sut.KnownServers.Should().BeEmpty();
-        _sut.SelectedServer.Should().BeNull();
+        _sut.SelectedServers.Should().BeEmpty();
         tracker.HasChanged(nameof(EventFilterViewModel.KnownServers)).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-014: IsServerFilterExpanded should default to true")]
+    public void EFV014()
+    {
+        // Assert
+        _sut.IsServerFilterExpanded.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-015: IsEventTypeFilterExpanded should default to true")]
+    public void EFV015()
+    {
+        // Assert
+        _sut.IsEventTypeFilterExpanded.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-016: SelectAllServersCommand should select all known servers")]
+    public void EFV016()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-a");
+        _sut.AddKnownServer("server-b");
+        _sut.DeselectAllServersCommand.Execute(null);
+
+        // Act
+        _sut.SelectAllServersCommand.Execute(null);
+
+        // Assert
+        _sut.IsServerSelected("server-a").Should().BeTrue();
+        _sut.IsServerSelected("server-b").Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-017: DeselectAllServersCommand should deselect all servers")]
+    public void EFV017()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-a");
+        _sut.AddKnownServer("server-b");
+
+        // Act
+        _sut.DeselectAllServersCommand.Execute(null);
+
+        // Assert
+        _sut.IsServerSelected("server-a").Should().BeFalse();
+        _sut.IsServerSelected("server-b").Should().BeFalse();
+        _sut.SelectedServers.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "EFV-018: IsServerSelected should return true for selected server")]
+    public void EFV018()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-a");
+
+        // Assert - server is auto-selected when added
+        _sut.IsServerSelected("server-a").Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-019: SetServerSelected should update selection and raise FilterChanged")]
+    public void EFV019()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-a");
+        var filterChangedRaised = false;
+        _sut.FilterChanged += () => filterChangedRaised = true;
+
+        // Act
+        _sut.SetServerSelected("server-a", false);
+
+        // Assert
+        _sut.IsServerSelected("server-a").Should().BeFalse();
+        filterChangedRaised.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-020: SelectEventTypeGroup should select all types in group")]
+    public void EFV020()
+    {
+        // Arrange
+        _sut.DisableAllEventTypesCommand.Execute(null);
+
+        // Act
+        _sut.SelectEventTypeGroup("Lifecycle");
+
+        // Assert
+        _sut.IsEventTypeEnabled(McpServerEventType.Starting).Should().BeTrue();
+        _sut.IsEventTypeEnabled(McpServerEventType.Started).Should().BeTrue();
+        _sut.IsEventTypeEnabled(McpServerEventType.Stopped).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-021: DeselectEventTypeGroup should deselect all types in group")]
+    public void EFV021()
+    {
+        // Act
+        _sut.DeselectEventTypeGroup("Lifecycle");
+
+        // Assert
+        _sut.IsEventTypeEnabled(McpServerEventType.Starting).Should().BeFalse();
+        _sut.IsEventTypeEnabled(McpServerEventType.Started).Should().BeFalse();
+        _sut.IsEventTypeEnabled(McpServerEventType.Stopped).Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "EFV-022: EventTypeGroups should return all 7 groups")]
+    public void EFV022()
+    {
+        // Assert
+        EventFilterViewModel.EventTypeGroups.Should().HaveCount(7);
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Lifecycle");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Configuration");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Tools");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Prompts");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Resources");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Invocations");
+        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Server");
+    }
+
+    [Fact(DisplayName = "EFV-023: SelectedServers should return only selected servers")]
+    public void EFV023()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-a");
+        _sut.AddKnownServer("server-b");
+        _sut.SetServerSelected("server-b", false);
+
+        // Assert
+        _sut.SelectedServers.Should().HaveCount(1);
+        _sut.SelectedServers.Should().Contain("server-a");
+    }
+
+    [Fact(DisplayName = "EFV-024: MatchesFilter should show all events when no servers selected")]
+    public void EFV024()
+    {
+        // Arrange - no servers selected (but servers exist)
+        _sut.AddKnownServer("server-a");
+        _sut.DeselectAllServersCommand.Execute(null);
+
+        var event1 = new McpServerEvent("server-a", McpServerEventType.Started, DateTimeOffset.Now);
+        var event2 = new McpServerEvent("server-b", McpServerEventType.Started, DateTimeOffset.Now);
+
+        // Assert - when no servers selected, all events should pass the server filter
+        _sut.MatchesFilter(event1).Should().BeTrue();
+        _sut.MatchesFilter(event2).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-025: AddKnownServer should auto-select new servers")]
+    public void EFV025()
+    {
+        // Act
+        _sut.AddKnownServer("new-server");
+
+        // Assert
+        _sut.IsServerSelected("new-server").Should().BeTrue();
+        _sut.SelectedServers.Should().Contain("new-server");
     }
 }

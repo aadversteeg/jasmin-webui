@@ -1,0 +1,34 @@
+.filter-group {
+    margin-bottom: 0.75rem;
+}
+
+.filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.filter-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.filter-group-title {
+    font-weight: 500;
+    font-size: 0.8rem;
+    color: #495057;
+}
+
+.filter-group-items {
+    padding-left: 0.5rem;
+}
+
+.form-check {
+    margin-bottom: 0.125rem;
+}
+
+.form-check-label {
+    font-size: 0.8rem;
+}

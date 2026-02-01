@@ -14,17 +14,77 @@ public partial class EventFilterViewModel : ViewModelBase
 {
     private const string ServerFilterKey = "jasmin-webui:server-filter";
     private const string EventTypeFilterKey = "jasmin-webui:event-type-filter";
+    private const string ServerExpandedKey = "jasmin-webui:server-filter-expanded";
+    private const string EventTypeExpandedKey = "jasmin-webui:event-type-filter-expanded";
 
     private readonly ILocalStorageService _localStorage;
     private readonly HashSet<string> _knownServers = new();
+    private readonly HashSet<string> _selectedServers = new();
     private readonly HashSet<McpServerEventType> _enabledEventTypes;
     private bool _isInitialized;
 
     [ObservableProperty]
-    private string? _selectedServer;
+    private bool _isServerFilterExpanded = true;
+
+    [ObservableProperty]
+    private bool _isEventTypeFilterExpanded = true;
 
     public IReadOnlySet<string> KnownServers => _knownServers;
+    public IReadOnlySet<string> SelectedServers => _selectedServers;
     public IReadOnlySet<McpServerEventType> EnabledEventTypes => _enabledEventTypes;
+
+    /// <summary>
+    /// Event type groups for UI organization.
+    /// </summary>
+    public static IReadOnlyDictionary<string, McpServerEventType[]> EventTypeGroups { get; } =
+        new Dictionary<string, McpServerEventType[]>
+        {
+            ["Lifecycle"] = new[]
+            {
+                McpServerEventType.Starting,
+                McpServerEventType.Started,
+                McpServerEventType.StartFailed,
+                McpServerEventType.Stopping,
+                McpServerEventType.Stopped,
+                McpServerEventType.StopFailed
+            },
+            ["Configuration"] = new[]
+            {
+                McpServerEventType.ConfigurationCreated,
+                McpServerEventType.ConfigurationUpdated,
+                McpServerEventType.ConfigurationDeleted
+            },
+            ["Tools"] = new[]
+            {
+                McpServerEventType.ToolsRetrieving,
+                McpServerEventType.ToolsRetrieved,
+                McpServerEventType.ToolsRetrievalFailed
+            },
+            ["Prompts"] = new[]
+            {
+                McpServerEventType.PromptsRetrieving,
+                McpServerEventType.PromptsRetrieved,
+                McpServerEventType.PromptsRetrievalFailed
+            },
+            ["Resources"] = new[]
+            {
+                McpServerEventType.ResourcesRetrieving,
+                McpServerEventType.ResourcesRetrieved,
+                McpServerEventType.ResourcesRetrievalFailed
+            },
+            ["Invocations"] = new[]
+            {
+                McpServerEventType.ToolInvocationAccepted,
+                McpServerEventType.ToolInvoking,
+                McpServerEventType.ToolInvoked,
+                McpServerEventType.ToolInvocationFailed
+            },
+            ["Server"] = new[]
+            {
+                McpServerEventType.ServerCreated,
+                McpServerEventType.ServerDeleted
+            }
+        };
 
     /// <summary>
     /// Event raised when filter state changes in a way that affects filtered results.
@@ -42,8 +102,14 @@ public partial class EventFilterViewModel : ViewModelBase
     {
         if (_isInitialized) return;
 
-        var savedServer = await _localStorage.GetAsync<string>(ServerFilterKey);
-        SetProperty(ref _selectedServer, savedServer, nameof(SelectedServer));
+        var savedServers = await _localStorage.GetAsync<List<string>>(ServerFilterKey);
+        if (savedServers != null)
+        {
+            foreach (var server in savedServers)
+            {
+                _selectedServers.Add(server);
+            }
+        }
 
         var savedEventTypes = await _localStorage.GetAsync<List<McpServerEventType>>(EventTypeFilterKey);
         if (savedEventTypes != null)
@@ -55,23 +121,82 @@ public partial class EventFilterViewModel : ViewModelBase
             }
         }
 
+        var savedServerExpanded = await _localStorage.GetAsync<bool?>(ServerExpandedKey);
+        if (savedServerExpanded.HasValue)
+        {
+            IsServerFilterExpanded = savedServerExpanded.Value;
+        }
+
+        var savedEventTypeExpanded = await _localStorage.GetAsync<bool?>(EventTypeExpandedKey);
+        if (savedEventTypeExpanded.HasValue)
+        {
+            IsEventTypeFilterExpanded = savedEventTypeExpanded.Value;
+        }
+
         _isInitialized = true;
-        OnPropertyChanged(nameof(SelectedServer));
+        OnPropertyChanged(nameof(SelectedServers));
         OnPropertyChanged(nameof(EnabledEventTypes));
     }
 
-    partial void OnSelectedServerChanged(string? value)
+    partial void OnIsServerFilterExpandedChanged(bool value)
     {
-        _ = SaveServerFilterAsync();
-        FilterChanged?.Invoke();
+        _ = _localStorage.SetAsync(ServerExpandedKey, value);
+    }
+
+    partial void OnIsEventTypeFilterExpandedChanged(bool value)
+    {
+        _ = _localStorage.SetAsync(EventTypeExpandedKey, value);
     }
 
     public void AddKnownServer(string serverName)
     {
         if (_knownServers.Add(serverName))
         {
+            // Auto-select new servers
+            _selectedServers.Add(serverName);
             OnPropertyChanged(nameof(KnownServers));
+            OnPropertyChanged(nameof(SelectedServers));
         }
+    }
+
+    public bool IsServerSelected(string serverName)
+    {
+        return _selectedServers.Contains(serverName);
+    }
+
+    public void SetServerSelected(string serverName, bool selected)
+    {
+        var changed = selected
+            ? _selectedServers.Add(serverName)
+            : _selectedServers.Remove(serverName);
+
+        if (changed)
+        {
+            _ = SaveServerFilterAsync();
+            OnPropertyChanged(nameof(SelectedServers));
+            FilterChanged?.Invoke();
+        }
+    }
+
+    [RelayCommand]
+    private void SelectAllServers()
+    {
+        foreach (var server in _knownServers)
+        {
+            _selectedServers.Add(server);
+        }
+        _ = SaveServerFilterAsync();
+        OnPropertyChanged(nameof(SelectedServers));
+        FilterChanged?.Invoke();
+    }
+
+    [RelayCommand]
+    private void DeselectAllServers()
+    {
+        _selectedServers.Clear();
+        _ = SaveServerFilterAsync();
+        OnPropertyChanged(nameof(SelectedServers));
+        FilterChanged?.Invoke();
     }
 
     public void SetEventTypeEnabled(McpServerEventType eventType, bool enabled)
@@ -110,6 +235,34 @@ public partial class EventFilterViewModel : ViewModelBase
         FilterChanged?.Invoke();
     }
 
+    public void SelectEventTypeGroup(string groupName)
+    {
+        if (EventTypeGroups.TryGetValue(groupName, out var eventTypes))
+        {
+            foreach (var eventType in eventTypes)
+            {
+                _enabledEventTypes.Add(eventType);
+            }
+            _ = SaveEventTypeFilterAsync();
+            OnPropertyChanged(nameof(EnabledEventTypes));
+            FilterChanged?.Invoke();
+        }
+    }
+
+    public void DeselectEventTypeGroup(string groupName)
+    {
+        if (EventTypeGroups.TryGetValue(groupName, out var eventTypes))
+        {
+            foreach (var eventType in eventTypes)
+            {
+                _enabledEventTypes.Remove(eventType);
+            }
+            _ = SaveEventTypeFilterAsync();
+            OnPropertyChanged(nameof(EnabledEventTypes));
+            FilterChanged?.Invoke();
+        }
+    }
+
     public bool IsEventTypeEnabled(McpServerEventType eventType)
     {
         return _enabledEventTypes.Contains(eventType);
@@ -117,7 +270,8 @@ public partial class EventFilterViewModel : ViewModelBase
 
     public bool MatchesFilter(McpServerEvent evt)
     {
-        if (SelectedServer != null && evt.ServerName != SelectedServer)
+        // If servers are selected, filter by them; otherwise show all
+        if (_selectedServers.Count > 0 && !_selectedServers.Contains(evt.ServerName))
         {
             return false;
         }
@@ -138,24 +292,50 @@ public partial class EventFilterViewModel : ViewModelBase
     public void ClearKnownServers()
     {
         _knownServers.Clear();
-        SelectedServer = null;
+        _selectedServers.Clear();
         OnPropertyChanged(nameof(KnownServers));
+        OnPropertyChanged(nameof(SelectedServers));
     }
 
     private async Task SaveServerFilterAsync()
     {
-        if (SelectedServer != null)
-        {
-            await _localStorage.SetAsync(ServerFilterKey, SelectedServer);
-        }
-        else
-        {
-            await _localStorage.RemoveAsync(ServerFilterKey);
-        }
+        await _localStorage.SetAsync(ServerFilterKey, _selectedServers.ToList());
     }
 
     private async Task SaveEventTypeFilterAsync()
     {
         await _localStorage.SetAsync(EventTypeFilterKey, _enabledEventTypes.ToList());
     }
+
+    /// <summary>
+    /// Gets a display-friendly name for an event type.
+    /// </summary>
+    public static string GetEventTypeDisplayName(McpServerEventType eventType) => eventType switch
+    {
+        McpServerEventType.Starting => "Starting",
+        McpServerEventType.Started => "Started",
+        McpServerEventType.StartFailed => "Start Failed",
+        McpServerEventType.Stopping => "Stopping",
+        McpServerEventType.Stopped => "Stopped",
+        McpServerEventType.StopFailed => "Stop Failed",
+        McpServerEventType.ConfigurationCreated => "Created",
+        McpServerEventType.ConfigurationUpdated => "Updated",
+        McpServerEventType.ConfigurationDeleted => "Deleted",
+        McpServerEventType.ToolsRetrieving => "Retrieving",
+        McpServerEventType.ToolsRetrieved => "Retrieved",
+        McpServerEventType.ToolsRetrievalFailed => "Failed",
+        McpServerEventType.PromptsRetrieving => "Retrieving",
+        McpServerEventType.PromptsRetrieved => "Retrieved",
+        McpServerEventType.PromptsRetrievalFailed => "Failed",
+        McpServerEventType.ResourcesRetrieving => "Retrieving",
+        McpServerEventType.ResourcesRetrieved => "Retrieved",
+        McpServerEventType.ResourcesRetrievalFailed => "Failed",
+        McpServerEventType.ToolInvocationAccepted => "Accepted",
+        McpServerEventType.ToolInvoking => "Invoking",
+        McpServerEventType.ToolInvoked => "Invoked",
+        McpServerEventType.ToolInvocationFailed => "Failed",
+        McpServerEventType.ServerCreated => "Created",
+        McpServerEventType.ServerDeleted => "Deleted",
+        _ => eventType.ToString()
+    };
 }

@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject SidePanelViewModel SidePanelVM
+@inject EventViewerViewModel EventViewerVM
+@inject EventFilterViewModel FilterVM
 
 <div class="app-container">
     <div class="main-content">
@@ -9,16 +11,19 @@
 
     @if (SidePanelVM.IsPanelOpen)
     {
-        <SidePanel>
-            <p class="text-muted">Panel content placeholder</p>
-        </SidePanel>
+        <SidePanel FilteredCount="@FilteredEventCount" TotalCount="@TotalEventCount" />
     }
 </div>
 
 @code {
+    private int FilteredEventCount => EventViewerVM.FilteredEvents.Count();
+    private int TotalEventCount => EventViewerVM.Events.Count;
+
     protected override void OnInitialized()
     {
         SidePanelVM.PropertyChanged += OnViewModelPropertyChanged;
+        FilterVM.FilterChanged += OnFilterChanged;
+        EventViewerVM.EventAdded += OnEventAdded;
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -29,8 +34,20 @@
         }
     }
 
+    private void OnFilterChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnEventAdded()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         SidePanelVM.PropertyChanged -= OnViewModelPropertyChanged;
+        FilterVM.FilterChanged -= OnFilterChanged;
+        EventViewerVM.EventAdded -= OnEventAdded;
     }
 }

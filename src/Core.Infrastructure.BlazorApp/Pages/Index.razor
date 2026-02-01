@@ -2,6 +2,7 @@
 @inherits MvvmComponentBase<EventViewerViewModel>
 @inject IJSRuntime JS
 @inject SidePanelViewModel SidePanelVM
+@inject EventFilterViewModel FilterVM
 
 <PageTitle>Jasmin Event Viewer</PageTitle>
 
@@ -56,17 +57,6 @@
     </div>
 </HeaderBar>
 
-<div class="filter-bar">
-    <div class="container-fluid">
-        <div class="d-flex gap-4 align-items-center">
-            <ServerFilter />
-            <EventTypeFilter />
-            <span class="text-muted small ms-auto">
-                @FilteredEventCount / @TotalEventCount events
-            </span>
-        </div>
-    </div>
-</div>
 
 <div class="events-area" id="events-container" @onscroll="OnScroll">
     @if (!FilteredEvents.Any())
@@ -104,13 +94,18 @@
     private bool IsConnecting => ViewModel.ConnectionState == ConnectionState.Connecting;
 
     private IEnumerable<McpServerEvent> FilteredEvents => ViewModel.FilteredEvents;
-    private int FilteredEventCount => ViewModel.FilteredEvents.Count();
-    private int TotalEventCount => ViewModel.Events.Count;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
         ViewModel.EventAdded += HandleEventAdded;
+        FilterVM.FilterChanged += HandleFilterChanged;
+    }
+
+    private void HandleFilterChanged()
+    {
+        if (_isDisposed) return;
+        InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -172,6 +167,7 @@
         {
             _isDisposed = true;
             ViewModel.EventAdded -= HandleEventAdded;
+            FilterVM.FilterChanged -= HandleFilterChanged;
         }
         base.Dispose(disposing);
     }
