@@ -2,8 +2,10 @@ using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Core.Application.McpServers;
 using Core.Application.Storage;
 using Core.Domain.Events;
+using Microsoft.Extensions.Logging;
 
 namespace Core.Infrastructure.BlazorApp.ViewModels;
 
@@ -18,9 +20,12 @@ public partial class EventFilterViewModel : ViewModelBase
     private const string EventTypeExpandedKey = "jasmin-webui:event-type-filter-expanded";
 
     private readonly ILocalStorageService _localStorage;
+    private readonly IJasminApiService _apiService;
+    private readonly ILogger<EventFilterViewModel> _logger;
     private readonly HashSet<string> _knownServers = new();
     private readonly HashSet<string> _selectedServers = new();
     private readonly HashSet<McpServerEventType> _enabledEventTypes;
+    private Dictionary<string, McpServerEventType[]>? _dynamicEventTypeGroups;
     private bool _isInitialized;
 
     [ObservableProperty]
@@ -35,8 +40,15 @@ public partial class EventFilterViewModel : ViewModelBase
 
     /// <summary>
     /// Event type groups for UI organization.
+    /// Returns dynamic groups from API if loaded, otherwise falls back to default.
     /// </summary>
-    public static IReadOnlyDictionary<string, McpServerEventType[]> EventTypeGroups { get; } =
+    public IReadOnlyDictionary<string, McpServerEventType[]> EventTypeGroups =>
+        _dynamicEventTypeGroups ?? DefaultEventTypeGroups;
+
+    /// <summary>
+    /// Default event type groups used when API data is not available.
+    /// </summary>
+    public static IReadOnlyDictionary<string, McpServerEventType[]> DefaultEventTypeGroups { get; } =
         new Dictionary<string, McpServerEventType[]>
         {
             ["Lifecycle"] = new[]
@@ -91,9 +103,14 @@ public partial class EventFilterViewModel : ViewModelBase
     /// </summary>
     public event Action? FilterChanged;
 
-    public EventFilterViewModel(ILocalStorageService localStorage)
+    public EventFilterViewModel(
+        ILocalStorageService localStorage,
+        IJasminApiService apiService,
+        ILogger<EventFilterViewModel> logger)
     {
         _localStorage = localStorage;
+        _apiService = apiService;
+        _logger = logger;
         _enabledEventTypes = new HashSet<McpServerEventType>(
             Enum.GetValues<McpServerEventType>());
     }
@@ -295,6 +312,107 @@ public partial class EventFilterViewModel : ViewModelBase
         _selectedServers.Clear();
         OnPropertyChanged(nameof(KnownServers));
         OnPropertyChanged(nameof(SelectedServers));
+    }
+
+    /// <summary>
+    /// Loads MCP servers from the jasmin-server REST API.
+    /// </summary>
+    public async Task LoadServersFromApiAsync(string serverUrl)
+    {
+        try
+        {
+            var servers = await _apiService.GetMcpServersAsync(serverUrl);
+            foreach (var server in servers)
+            {
+                AddKnownServer(server.Name);
+            }
+            _logger.LogInformation("Loaded {Count} servers from API", servers.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load servers from API, continuing with event-based discovery");
+        }
+    }
+
+    /// <summary>
+    /// Loads event types from the jasmin-server REST API.
+    /// </summary>
+    public async Task LoadEventTypesFromApiAsync(string serverUrl)
+    {
+        try
+        {
+            var types = await _apiService.GetEventTypesAsync(serverUrl);
+            if (types.Count > 0)
+            {
+                UpdateEventTypeGroups(types);
+                _logger.LogInformation("Loaded {Count} event types from API", types.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load event types from API, using defaults");
+        }
+    }
+
+    /// <summary>
+    /// Handles ServerCreated and ServerDeleted events to update the filter.
+    /// </summary>
+    public void HandleServerEvent(McpServerEvent evt)
+    {
+        if (evt.EventType == McpServerEventType.ServerCreated)
+        {
+            AddKnownServer(evt.ServerName);
+            _logger.LogDebug("Server {ServerName} added to filter via event", evt.ServerName);
+        }
+        else if (evt.EventType == McpServerEventType.ServerDeleted)
+        {
+            RemoveServer(evt.ServerName);
+            _logger.LogDebug("Server {ServerName} removed from filter via event", evt.ServerName);
+        }
+    }
+
+    /// <summary>
+    /// Removes a server from the known and selected servers lists.
+    /// </summary>
+    public void RemoveServer(string serverName)
+    {
+        var removed = _knownServers.Remove(serverName);
+        var deselected = _selectedServers.Remove(serverName);
+
+        if (removed || deselected)
+        {
+            if (deselected)
+            {
+                _ = SaveServerFilterAsync();
+            }
+            OnPropertyChanged(nameof(KnownServers));
+            OnPropertyChanged(nameof(SelectedServers));
+            FilterChanged?.Invoke();
+        }
+    }
+
+    private void UpdateEventTypeGroups(IReadOnlyList<EventTypeInfo> types)
+    {
+        var groups = new Dictionary<string, List<McpServerEventType>>();
+
+        foreach (var type in types)
+        {
+            if (Enum.TryParse<McpServerEventType>(type.Name, out var eventType))
+            {
+                if (!groups.TryGetValue(type.Category, out var list))
+                {
+                    list = new List<McpServerEventType>();
+                    groups[type.Category] = list;
+                }
+                list.Add(eventType);
+            }
+        }
+
+        _dynamicEventTypeGroups = groups.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToArray());
+
+        OnPropertyChanged(nameof(EventTypeGroups));
     }
 
     private async Task SaveServerFilterAsync()

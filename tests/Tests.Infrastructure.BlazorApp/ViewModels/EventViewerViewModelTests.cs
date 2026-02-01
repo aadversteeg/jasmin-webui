@@ -1,8 +1,10 @@
 using Core.Application.Events;
+using Core.Application.McpServers;
 using Core.Application.Storage;
 using Core.Domain.Events;
 using Core.Infrastructure.BlazorApp.ViewModels;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Tests.Infrastructure.BlazorApp.Helpers;
 using Xunit;
@@ -13,6 +15,8 @@ public class EventViewerViewModelTests : IDisposable
 {
     private readonly Mock<IEventStreamService> _eventStreamMock;
     private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IJasminApiService> _apiServiceMock;
+    private readonly Mock<ILogger<EventFilterViewModel>> _filterLoggerMock;
     private readonly EventFilterViewModel _filterViewModel;
     private readonly EventViewerViewModel _sut;
 
@@ -20,7 +24,12 @@ public class EventViewerViewModelTests : IDisposable
     {
         _eventStreamMock = new Mock<IEventStreamService>();
         _localStorageMock = new Mock<ILocalStorageService>();
-        _filterViewModel = new EventFilterViewModel(_localStorageMock.Object);
+        _apiServiceMock = new Mock<IJasminApiService>();
+        _filterLoggerMock = new Mock<ILogger<EventFilterViewModel>>();
+        _filterViewModel = new EventFilterViewModel(
+            _localStorageMock.Object,
+            _apiServiceMock.Object,
+            _filterLoggerMock.Object);
 
         _sut = new EventViewerViewModel(
             _eventStreamMock.Object,

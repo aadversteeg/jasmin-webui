@@ -1,7 +1,9 @@
+using Core.Application.McpServers;
 using Core.Application.Storage;
 using Core.Domain.Events;
 using Core.Infrastructure.BlazorApp.ViewModels;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Tests.Infrastructure.BlazorApp.Helpers;
 using Xunit;
@@ -11,12 +13,19 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 public class EventFilterViewModelTests
 {
     private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IJasminApiService> _apiServiceMock;
+    private readonly Mock<ILogger<EventFilterViewModel>> _loggerMock;
     private readonly EventFilterViewModel _sut;
 
     public EventFilterViewModelTests()
     {
         _localStorageMock = new Mock<ILocalStorageService>();
-        _sut = new EventFilterViewModel(_localStorageMock.Object);
+        _apiServiceMock = new Mock<IJasminApiService>();
+        _loggerMock = new Mock<ILogger<EventFilterViewModel>>();
+        _sut = new EventFilterViewModel(
+            _localStorageMock.Object,
+            _apiServiceMock.Object,
+            _loggerMock.Object);
     }
 
     [Fact(DisplayName = "EFV-001: All event types should be enabled by default")]
@@ -317,18 +326,18 @@ public class EventFilterViewModelTests
         _sut.IsEventTypeEnabled(McpServerEventType.Stopped).Should().BeFalse();
     }
 
-    [Fact(DisplayName = "EFV-022: EventTypeGroups should return all 7 groups")]
+    [Fact(DisplayName = "EFV-022: DefaultEventTypeGroups should return all 7 groups")]
     public void EFV022()
     {
-        // Assert
-        EventFilterViewModel.EventTypeGroups.Should().HaveCount(7);
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Lifecycle");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Configuration");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Tools");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Prompts");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Resources");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Invocations");
-        EventFilterViewModel.EventTypeGroups.Keys.Should().Contain("Server");
+        // Assert - using DefaultEventTypeGroups since EventTypeGroups is now instance-based
+        EventFilterViewModel.DefaultEventTypeGroups.Should().HaveCount(7);
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Lifecycle");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Configuration");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Tools");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Prompts");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Resources");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Invocations");
+        EventFilterViewModel.DefaultEventTypeGroups.Keys.Should().Contain("Server");
     }
 
     [Fact(DisplayName = "EFV-023: SelectedServers should return only selected servers")]
@@ -368,5 +377,184 @@ public class EventFilterViewModelTests
         // Assert
         _sut.IsServerSelected("new-server").Should().BeTrue();
         _sut.SelectedServers.Should().Contain("new-server");
+    }
+
+    [Fact(DisplayName = "EFV-026: LoadServersFromApiAsync should populate known servers")]
+    public async Task EFV026()
+    {
+        // Arrange
+        var servers = new List<McpServerInfo>
+        {
+            new("server-1", "running", DateTimeOffset.Now),
+            new("server-2", "stopped", DateTimeOffset.Now)
+        };
+        _apiServiceMock.Setup(x => x.GetMcpServersAsync("http://localhost:5000"))
+            .ReturnsAsync(servers);
+
+        // Act
+        await _sut.LoadServersFromApiAsync("http://localhost:5000");
+
+        // Assert
+        _sut.KnownServers.Should().HaveCount(2);
+        _sut.KnownServers.Should().Contain("server-1");
+        _sut.KnownServers.Should().Contain("server-2");
+    }
+
+    [Fact(DisplayName = "EFV-027: LoadServersFromApiAsync should auto-select loaded servers")]
+    public async Task EFV027()
+    {
+        // Arrange
+        var servers = new List<McpServerInfo>
+        {
+            new("api-server", "running", null)
+        };
+        _apiServiceMock.Setup(x => x.GetMcpServersAsync(It.IsAny<string>()))
+            .ReturnsAsync(servers);
+
+        // Act
+        await _sut.LoadServersFromApiAsync("http://localhost:5000");
+
+        // Assert
+        _sut.SelectedServers.Should().Contain("api-server");
+        _sut.IsServerSelected("api-server").Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-028: LoadServersFromApiAsync should handle API errors gracefully")]
+    public async Task EFV028()
+    {
+        // Arrange
+        _apiServiceMock.Setup(x => x.GetMcpServersAsync(It.IsAny<string>()))
+            .ThrowsAsync(new HttpRequestException("Connection failed"));
+
+        // Act - should not throw
+        await _sut.LoadServersFromApiAsync("http://localhost:5000");
+
+        // Assert - no servers added, but no exception
+        _sut.KnownServers.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "EFV-029: HandleServerEvent with ServerCreated should add server")]
+    public void EFV029()
+    {
+        // Arrange
+        var evt = new McpServerEvent("new-server", McpServerEventType.ServerCreated, DateTimeOffset.Now);
+
+        // Act
+        _sut.HandleServerEvent(evt);
+
+        // Assert
+        _sut.KnownServers.Should().Contain("new-server");
+        _sut.IsServerSelected("new-server").Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-030: HandleServerEvent with ServerDeleted should remove server")]
+    public void EFV030()
+    {
+        // Arrange
+        _sut.AddKnownServer("old-server");
+        _sut.KnownServers.Should().Contain("old-server");
+
+        var evt = new McpServerEvent("old-server", McpServerEventType.ServerDeleted, DateTimeOffset.Now);
+
+        // Act
+        _sut.HandleServerEvent(evt);
+
+        // Assert
+        _sut.KnownServers.Should().NotContain("old-server");
+        _sut.SelectedServers.Should().NotContain("old-server");
+    }
+
+    [Fact(DisplayName = "EFV-031: RemoveServer should raise FilterChanged")]
+    public void EFV031()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-to-remove");
+        var filterChangedRaised = false;
+        _sut.FilterChanged += () => filterChangedRaised = true;
+
+        // Act
+        _sut.RemoveServer("server-to-remove");
+
+        // Assert
+        filterChangedRaised.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "EFV-032: RemoveServer should save updated selection to storage")]
+    public void EFV032()
+    {
+        // Arrange
+        _sut.AddKnownServer("server-to-remove");
+
+        // Act
+        _sut.RemoveServer("server-to-remove");
+
+        // Assert
+        _localStorageMock.Verify(
+            x => x.SetAsync("jasmin-webui:server-filter", It.IsAny<List<string>>()),
+            Times.Once);
+    }
+
+    [Fact(DisplayName = "EFV-033: LoadEventTypesFromApiAsync should update EventTypeGroups")]
+    public async Task EFV033()
+    {
+        // Arrange
+        var eventTypes = new List<EventTypeInfo>
+        {
+            new("Starting", 0, "Lifecycle", "Server is starting"),
+            new("Started", 1, "Lifecycle", "Server has started"),
+            new("ConfigurationCreated", 6, "Configuration", "Configuration was created")
+        };
+        _apiServiceMock.Setup(x => x.GetEventTypesAsync(It.IsAny<string>()))
+            .ReturnsAsync(eventTypes);
+
+        // Act
+        await _sut.LoadEventTypesFromApiAsync("http://localhost:5000");
+
+        // Assert
+        _sut.EventTypeGroups.Should().HaveCount(2);
+        _sut.EventTypeGroups.Keys.Should().Contain("Lifecycle");
+        _sut.EventTypeGroups.Keys.Should().Contain("Configuration");
+        _sut.EventTypeGroups["Lifecycle"].Should().HaveCount(2);
+    }
+
+    [Fact(DisplayName = "EFV-034: EventTypeGroups should return defaults when API not loaded")]
+    public void EFV034()
+    {
+        // Assert - without loading from API, should return defaults
+        _sut.EventTypeGroups.Should().BeEquivalentTo(EventFilterViewModel.DefaultEventTypeGroups);
+    }
+
+    [Fact(DisplayName = "EFV-035: LoadEventTypesFromApiAsync should handle API errors gracefully")]
+    public async Task EFV035()
+    {
+        // Arrange
+        _apiServiceMock.Setup(x => x.GetEventTypesAsync(It.IsAny<string>()))
+            .ThrowsAsync(new HttpRequestException("Connection failed"));
+
+        // Act - should not throw
+        await _sut.LoadEventTypesFromApiAsync("http://localhost:5000");
+
+        // Assert - defaults should still work
+        _sut.EventTypeGroups.Should().HaveCount(7);
+    }
+
+    [Fact(DisplayName = "EFV-036: LoadEventTypesFromApiAsync should raise PropertyChanged for EventTypeGroups")]
+    public async Task EFV036()
+    {
+        // Arrange
+        var eventTypes = new List<EventTypeInfo>
+        {
+            new("Starting", 0, "Lifecycle", "Server is starting")
+        };
+        _apiServiceMock.Setup(x => x.GetEventTypesAsync(It.IsAny<string>()))
+            .ReturnsAsync(eventTypes);
+
+        using var tracker = new PropertyChangedTracker(_sut);
+
+        // Act
+        await _sut.LoadEventTypesFromApiAsync("http://localhost:5000");
+
+        // Assert
+        tracker.HasChanged(nameof(EventFilterViewModel.EventTypeGroups)).Should().BeTrue();
     }
 }

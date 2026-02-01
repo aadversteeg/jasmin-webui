@@ -1,4 +1,5 @@
 using Core.Application.Events;
+using Core.Application.McpServers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Core.Infrastructure.JasminClient;
@@ -15,6 +16,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<HttpClient>();
         services.AddScoped<IEventStreamService, EventStreamService>();
+        services.AddScoped<IJasminApiService, JasminApiService>();
         return services;
     }
 }

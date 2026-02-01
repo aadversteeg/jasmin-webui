@@ -108,7 +108,7 @@
 
     private IEnumerable<FilterPanelGroup> GetEventTypeGroups()
     {
-        return EventFilterViewModel.EventTypeGroups.Select(group => new FilterPanelGroup(
+        return FilterVM.EventTypeGroups.Select(group => new FilterPanelGroup(
             Name: group.Key,
             Items: group.Value.Select(eventType => new FilterPanelItem(
                 Id: $"event-type-{eventType}",

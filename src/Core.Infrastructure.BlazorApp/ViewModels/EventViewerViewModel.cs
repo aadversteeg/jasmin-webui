@@ -155,6 +155,13 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         _events.Add(evt);
         FilterViewModel.AddKnownServer(evt.ServerName);
 
+        // Handle ServerCreated/ServerDeleted events for filter updates
+        if (evt.EventType == McpServerEventType.ServerCreated ||
+            evt.EventType == McpServerEventType.ServerDeleted)
+        {
+            FilterViewModel.HandleServerEvent(evt);
+        }
+
         // Trim old events to prevent memory issues
         while (_events.Count > MaxEvents)
         {
@@ -171,8 +178,18 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         if (state == ConnectionState.Connected)
         {
             LastError = null;
+            // Load filters from API when connected
+            _ = LoadFiltersFromApiAsync();
         }
         OnPropertyChanged(nameof(ConnectionState));
+    }
+
+    private async Task LoadFiltersFromApiAsync()
+    {
+        // Load servers and event types from API in parallel
+        await Task.WhenAll(
+            FilterViewModel.LoadServersFromApiAsync(ServerUrl),
+            FilterViewModel.LoadEventTypesFromApiAsync(ServerUrl));
     }
 
     private void HandleError(object? sender, string error)
