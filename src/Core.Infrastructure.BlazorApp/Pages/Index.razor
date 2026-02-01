@@ -1,7 +1,6 @@
 @page "/"
-@inject EventViewerState State
+@inherits MvvmComponentBase<EventViewerViewModel>
 @inject IJSRuntime JS
-@implements IDisposable
 
 <PageTitle>Jasmin Event Viewer</PageTitle>
 
@@ -16,7 +15,7 @@
                 <input type="text"
                        class="form-control"
                        placeholder="Server URL (e.g., http://localhost:5000)"
-                       @bind="State.ServerUrl"
+                       @bind="ViewModel.ServerUrl"
                        @bind:event="oninput"
                        disabled="@IsConnected" />
             </div>
@@ -33,17 +32,17 @@
                         @(IsConnecting ? "Connecting..." : "Connect")
                     </button>
                 }
-                <button class="btn btn-outline-secondary" @onclick="ClearEvents">
+                <button class="btn btn-outline-secondary" @onclick="() => ViewModel.ClearEventsCommand.Execute(null)">
                     Clear
                 </button>
             </div>
         </div>
-        @if (State.LastError != null)
+        @if (ViewModel.LastError != null)
         {
             <div class="row mt-2">
                 <div class="col">
                     <div class="alert alert-danger py-2 mb-0 small">
-                        @State.LastError
+                        @ViewModel.LastError
                     </div>
                 </div>
             </div>
@@ -67,7 +66,7 @@
     @if (!FilteredEvents.Any())
     {
         <div class="empty-state">
-            @if (!State.Events.Any())
+            @if (!ViewModel.Events.Any())
             {
                 <div class="empty-state-icon">&#128225;</div>
                 <p>No events yet.</p>
@@ -95,18 +94,17 @@
     private bool _isDisposed;
     private bool _pendingScrollToBottom;
 
-    private bool IsConnected => State.ConnectionState == ConnectionState.Connected;
-    private bool IsConnecting => State.ConnectionState == ConnectionState.Connecting;
+    private bool IsConnected => ViewModel.ConnectionState == ConnectionState.Connected;
+    private bool IsConnecting => ViewModel.ConnectionState == ConnectionState.Connecting;
 
-    private IEnumerable<McpServerEvent> FilteredEvents => State.FilteredEvents;
-    private int FilteredEventCount => State.FilteredEvents.Count();
-    private int TotalEventCount => State.Events.Count;
+    private IEnumerable<McpServerEvent> FilteredEvents => ViewModel.FilteredEvents;
+    private int FilteredEventCount => ViewModel.FilteredEvents.Count();
+    private int TotalEventCount => ViewModel.Events.Count;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        State.OnChange += HandleStateChanged;
-        State.OnEventAdded += HandleEventAdded;
-        await State.InitializeAsync();
+        base.OnInitialized();
+        ViewModel.EventAdded += HandleEventAdded;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -120,29 +118,18 @@
 
     private async Task Connect()
     {
-        await State.ConnectAsync();
+        await ViewModel.ConnectCommand.ExecuteAsync(null);
     }
 
     private async Task Disconnect()
     {
-        await State.DisconnectAsync();
-    }
-
-    private void ClearEvents()
-    {
-        State.ClearEvents();
+        await ViewModel.DisconnectCommand.ExecuteAsync(null);
     }
 
     private async Task OnScroll()
     {
         if (_isDisposed) return;
         _autoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "events-container");
-    }
-
-    private void HandleStateChanged()
-    {
-        if (_isDisposed) return;
-        InvokeAsync(StateHasChanged);
     }
 
     private void HandleEventAdded()
@@ -155,7 +142,7 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private string GetConnectionClass() => State.ConnectionState switch
+    private string GetConnectionClass() => ViewModel.ConnectionState switch
     {
         ConnectionState.Connected => "connected",
         ConnectionState.Connecting => "connecting",
@@ -164,7 +151,7 @@
         _ => "disconnected"
     };
 
-    private string GetConnectionText() => State.ConnectionState switch
+    private string GetConnectionText() => ViewModel.ConnectionState switch
     {
         ConnectionState.Connected => "Connected",
         ConnectionState.Connecting => "Connecting...",
@@ -173,10 +160,13 @@
         _ => "Disconnected"
     };
 
-    public void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        _isDisposed = true;
-        State.OnChange -= HandleStateChanged;
-        State.OnEventAdded -= HandleEventAdded;
+        if (disposing)
+        {
+            _isDisposed = true;
+            ViewModel.EventAdded -= HandleEventAdded;
+        }
+        base.Dispose(disposing);
     }
 }

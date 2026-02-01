@@ -1,12 +1,12 @@
-@inject EventFilterState FilterState
+@inherits MvvmComponentBase<EventFilterViewModel>
 
 <div class="d-flex align-items-center">
     <label class="form-label mb-0 me-2 text-nowrap">Server:</label>
     <select class="form-select form-select-sm filter-dropdown"
-            value="@(FilterState.SelectedServer ?? "")"
+            value="@(ViewModel.SelectedServer ?? "")"
             @onchange="OnServerChanged">
         <option value="">All servers</option>
-        @foreach (var server in FilterState.KnownServers.OrderBy(s => s))
+        @foreach (var server in ViewModel.KnownServers.OrderBy(s => s))
         {
             <option value="@server">@server</option>
         }
@@ -14,19 +14,9 @@
 </div>
 
 @code {
-    protected override void OnInitialized()
-    {
-        FilterState.OnChange += StateHasChanged;
-    }
-
     private void OnServerChanged(ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
-        FilterState.SelectedServer = string.IsNullOrEmpty(value) ? null : value;
-    }
-
-    public void Dispose()
-    {
-        FilterState.OnChange -= StateHasChanged;
+        ViewModel.SelectedServer = string.IsNullOrEmpty(value) ? null : value;
     }
 }

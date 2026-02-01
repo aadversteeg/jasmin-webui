@@ -1,0 +1,64 @@
+.top-bar {
+    flex-shrink: 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.filter-bar {
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    background-color: #ffffff;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.events-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: #f8f9fa;
+}
+
+.connection-indicator {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.connection-indicator.connected {
+    background-color: #198754;
+}
+
+.connection-indicator.disconnected {
+    background-color: #6c757d;
+}
+
+.connection-indicator.connecting {
+    background-color: #ffc107;
+    animation: pulse 1s infinite;
+}
+
+.connection-indicator.error {
+    background-color: #dc3545;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6c757d;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}

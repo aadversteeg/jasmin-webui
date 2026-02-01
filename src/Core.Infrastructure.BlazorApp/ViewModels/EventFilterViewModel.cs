@@ -1,12 +1,16 @@
+using System.ComponentModel;
+using Blazing.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Core.Application.Storage;
 using Core.Domain.Events;
 
-namespace Core.Infrastructure.BlazorApp.Services;
+namespace Core.Infrastructure.BlazorApp.ViewModels;
 
 /// <summary>
-/// Manages filter state for events.
+/// ViewModel for event filtering functionality.
 /// </summary>
-public class EventFilterState
+public partial class EventFilterViewModel : ViewModelBase
 {
     private const string ServerFilterKey = "jasmin-webui:server-filter";
     private const string EventTypeFilterKey = "jasmin-webui:event-type-filter";
@@ -14,29 +18,20 @@ public class EventFilterState
     private readonly ILocalStorageService _localStorage;
     private readonly HashSet<string> _knownServers = new();
     private readonly HashSet<McpServerEventType> _enabledEventTypes;
-    private string? _selectedServer;
     private bool _isInitialized;
+
+    [ObservableProperty]
+    private string? _selectedServer;
 
     public IReadOnlySet<string> KnownServers => _knownServers;
     public IReadOnlySet<McpServerEventType> EnabledEventTypes => _enabledEventTypes;
 
-    public string? SelectedServer
-    {
-        get => _selectedServer;
-        set
-        {
-            if (_selectedServer != value)
-            {
-                _selectedServer = value;
-                _ = SaveServerFilterAsync();
-                NotifyStateChanged();
-            }
-        }
-    }
+    /// <summary>
+    /// Event raised when filter state changes in a way that affects filtered results.
+    /// </summary>
+    public event Action? FilterChanged;
 
-    public event Action? OnChange;
-
-    public EventFilterState(ILocalStorageService localStorage)
+    public EventFilterViewModel(ILocalStorageService localStorage)
     {
         _localStorage = localStorage;
         _enabledEventTypes = new HashSet<McpServerEventType>(
@@ -48,7 +43,7 @@ public class EventFilterState
         if (_isInitialized) return;
 
         var savedServer = await _localStorage.GetAsync<string>(ServerFilterKey);
-        _selectedServer = savedServer;
+        SetProperty(ref _selectedServer, savedServer, nameof(SelectedServer));
 
         var savedEventTypes = await _localStorage.GetAsync<List<McpServerEventType>>(EventTypeFilterKey);
         if (savedEventTypes != null)
@@ -61,14 +56,21 @@ public class EventFilterState
         }
 
         _isInitialized = true;
-        NotifyStateChanged();
+        OnPropertyChanged(nameof(SelectedServer));
+        OnPropertyChanged(nameof(EnabledEventTypes));
+    }
+
+    partial void OnSelectedServerChanged(string? value)
+    {
+        _ = SaveServerFilterAsync();
+        FilterChanged?.Invoke();
     }
 
     public void AddKnownServer(string serverName)
     {
         if (_knownServers.Add(serverName))
         {
-            NotifyStateChanged();
+            OnPropertyChanged(nameof(KnownServers));
         }
     }
 
@@ -81,11 +83,13 @@ public class EventFilterState
         if (changed)
         {
             _ = SaveEventTypeFilterAsync();
-            NotifyStateChanged();
+            OnPropertyChanged(nameof(EnabledEventTypes));
+            FilterChanged?.Invoke();
         }
     }
 
-    public void EnableAllEventTypes()
+    [RelayCommand]
+    private void EnableAllEventTypes()
     {
         _enabledEventTypes.Clear();
         foreach (var eventType in Enum.GetValues<McpServerEventType>())
@@ -93,14 +97,17 @@ public class EventFilterState
             _enabledEventTypes.Add(eventType);
         }
         _ = SaveEventTypeFilterAsync();
-        NotifyStateChanged();
+        OnPropertyChanged(nameof(EnabledEventTypes));
+        FilterChanged?.Invoke();
     }
 
-    public void DisableAllEventTypes()
+    [RelayCommand]
+    private void DisableAllEventTypes()
     {
         _enabledEventTypes.Clear();
         _ = SaveEventTypeFilterAsync();
-        NotifyStateChanged();
+        OnPropertyChanged(nameof(EnabledEventTypes));
+        FilterChanged?.Invoke();
     }
 
     public bool IsEventTypeEnabled(McpServerEventType eventType)
@@ -110,7 +117,7 @@ public class EventFilterState
 
     public bool MatchesFilter(McpServerEvent evt)
     {
-        if (_selectedServer != null && evt.ServerName != _selectedServer)
+        if (SelectedServer != null && evt.ServerName != SelectedServer)
         {
             return false;
         }
@@ -131,16 +138,15 @@ public class EventFilterState
     public void ClearKnownServers()
     {
         _knownServers.Clear();
-        _selectedServer = null;
-        _ = SaveServerFilterAsync();
-        NotifyStateChanged();
+        SelectedServer = null;
+        OnPropertyChanged(nameof(KnownServers));
     }
 
     private async Task SaveServerFilterAsync()
     {
-        if (_selectedServer != null)
+        if (SelectedServer != null)
         {
-            await _localStorage.SetAsync(ServerFilterKey, _selectedServer);
+            await _localStorage.SetAsync(ServerFilterKey, SelectedServer);
         }
         else
         {
@@ -152,6 +158,4 @@ public class EventFilterState
     {
         await _localStorage.SetAsync(EventTypeFilterKey, _enabledEventTypes.ToList());
     }
-
-    private void NotifyStateChanged() => OnChange?.Invoke();
 }
