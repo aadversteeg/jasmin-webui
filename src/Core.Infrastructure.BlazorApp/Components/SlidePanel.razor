@@ -1,0 +1,67 @@
+@inject IJSRuntime JS
+
+<div class="slide-panel @PositionClass" style="width: @(Width)px;">
+    <div class="resize-handle @ResizeHandleClass" @onmousedown="StartResize"></div>
+
+    <HeaderBar>
+        @Header
+    </HeaderBar>
+
+    <div class="panel-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public PanelPosition Position { get; set; } = PanelPosition.Right;
+
+    [Parameter]
+    public int Width { get; set; } = 400;
+
+    [Parameter]
+    public EventCallback<int> WidthChanged { get; set; }
+
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string PositionClass => Position == PanelPosition.Left ? "panel-left" : "panel-right";
+    private string ResizeHandleClass => Position == PanelPosition.Left ? "handle-right" : "handle-left";
+
+    private int _startX;
+    private int _startWidth;
+
+    private async Task StartResize(MouseEventArgs e)
+    {
+        _startX = (int)e.ClientX;
+        _startWidth = Width;
+
+        var positionValue = Position == PanelPosition.Left ? "left" : "right";
+        await JS.InvokeVoidAsync("slidePanelResize.start",
+            DotNetObjectReference.Create(this), _startX, _startWidth, positionValue);
+    }
+
+    [JSInvokable]
+    public async Task UpdateWidth(int deltaX)
+    {
+        int newWidth;
+        if (Position == PanelPosition.Left)
+        {
+            newWidth = _startWidth + deltaX;
+        }
+        else
+        {
+            newWidth = _startWidth - deltaX;
+        }
+
+        await WidthChanged.InvokeAsync(newWidth);
+    }
+
+    [JSInvokable]
+    public void EndResize()
+    {
+    }
+}

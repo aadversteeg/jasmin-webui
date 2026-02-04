@@ -20,5 +20,6 @@ builder.Services.AddScoped<ConfigurationViewModel>();
 builder.Services.AddScoped<EventFilterViewModel>();
 builder.Services.AddScoped<EventViewerViewModel>();
 builder.Services.AddScoped<SidePanelViewModel>();
+builder.Services.AddScoped<LeftPanelViewModel>();
 
 await builder.Build().RunAsync();

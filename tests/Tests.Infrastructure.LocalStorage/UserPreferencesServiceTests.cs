@@ -111,9 +111,7 @@ public class UserPreferencesServiceTests
             IsPanelOpen = true,
             PanelWidth = 600,
             IsServerFilterExpanded = false,
-            IsEventTypeFilterExpanded = false,
-            ServerUrl = "http://saved-server.com",
-            LastEventId = "evt-123"
+            IsEventTypeFilterExpanded = false
         };
         _localStorageMock
             .Setup(x => x.GetAsync<UserPreferences>("jasmin-webui:preferences"))
@@ -127,8 +125,6 @@ public class UserPreferencesServiceTests
         _sut.PanelWidth.Should().Be(600);
         _sut.IsServerFilterExpanded.Should().BeFalse();
         _sut.IsEventTypeFilterExpanded.Should().BeFalse();
-        _sut.ServerUrl.Should().Be("http://saved-server.com");
-        _sut.LastEventId.Should().Be("evt-123");
     }
 
     [Fact(DisplayName = "UPS-011: LoadAsync should clamp saved PanelWidth if too small")]
@@ -283,44 +279,6 @@ public class UserPreferencesServiceTests
             Times.Once);
     }
 
-    [Fact(DisplayName = "UPS-024: ServerUrl should default to null")]
-    public void UPS024()
-    {
-        _sut.ServerUrl.Should().BeNull();
-    }
-
-    [Fact(DisplayName = "UPS-025: Setting ServerUrl should persist")]
-    public void UPS025()
-    {
-        // Act
-        _sut.ServerUrl = "http://example.com";
-
-        // Assert
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:preferences",
-                It.Is<UserPreferences>(p => p.ServerUrl == "http://example.com")),
-            Times.Once);
-    }
-
-    [Fact(DisplayName = "UPS-026: LastEventId should default to null")]
-    public void UPS026()
-    {
-        _sut.LastEventId.Should().BeNull();
-    }
-
-    [Fact(DisplayName = "UPS-027: Setting LastEventId should persist")]
-    public void UPS027()
-    {
-        // Act
-        _sut.LastEventId = "evt-456";
-
-        // Assert
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:preferences",
-                It.Is<UserPreferences>(p => p.LastEventId == "evt-456")),
-            Times.Once);
-    }
-
     [Fact(DisplayName = "UPS-028: LoadAsync should restore saved servers")]
     public async Task UPS028()
     {
@@ -375,7 +333,7 @@ public class UserPreferencesServiceTests
         _sut.IsPanelOpen = true;
         _sut.PanelWidth = 500;
         _sut.IsServerFilterExpanded = false;
-        _sut.ServerUrl = "http://test.com";
+        _sut.IsEventTypeFilterExpanded = false;
 
         // Assert
         eventCount.Should().Be(4);
@@ -397,7 +355,6 @@ public class UserPreferencesServiceTests
         _sut.PanelWidth.Should().Be(400);
         _sut.IsServerFilterExpanded.Should().BeTrue();
         _sut.IsEventTypeFilterExpanded.Should().BeTrue();
-        _sut.ServerUrl.Should().BeNull();
         _sut.SelectedServers.Should().BeEmpty();
         _sut.EnabledEventTypes.Should().BeEmpty();
     }

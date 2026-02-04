@@ -14,6 +14,7 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 public class EventViewerViewModelTests : IDisposable
 {
     private readonly Mock<IEventStreamService> _eventStreamMock;
+    private readonly Mock<IApplicationStateService> _appStateMock;
     private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly Mock<IJasminApiService> _apiServiceMock;
     private readonly Mock<ILogger<EventFilterViewModel>> _filterLoggerMock;
@@ -23,6 +24,7 @@ public class EventViewerViewModelTests : IDisposable
     public EventViewerViewModelTests()
     {
         _eventStreamMock = new Mock<IEventStreamService>();
+        _appStateMock = new Mock<IApplicationStateService>();
         _preferencesMock = new Mock<IUserPreferencesService>();
         _preferencesMock.Setup(x => x.KnownServers).Returns(new List<string>());
         _preferencesMock.Setup(x => x.SelectedServers).Returns(new List<string>());
@@ -38,7 +40,7 @@ public class EventViewerViewModelTests : IDisposable
 
         _sut = new EventViewerViewModel(
             _eventStreamMock.Object,
-            _preferencesMock.Object,
+            _appStateMock.Object,
             _filterViewModel);
     }
 
@@ -61,14 +63,14 @@ public class EventViewerViewModelTests : IDisposable
         tracker.HasChanged(nameof(EventViewerViewModel.ServerUrl)).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EVV-003: ServerUrl change should persist to preferences")]
+    [Fact(DisplayName = "EVV-003: ServerUrl change should persist to application state")]
     public void EVV003()
     {
         // Act
         _sut.ServerUrl = "http://example.com";
 
         // Assert
-        _preferencesMock.VerifySet(x => x.ServerUrl = "http://example.com", Times.Once);
+        _appStateMock.VerifySet(x => x.ServerUrl = "http://example.com", Times.Once);
     }
 
     [Fact(DisplayName = "EVV-004: ConnectCommand should call StartAsync with stream URL")]
@@ -225,7 +227,7 @@ public class EventViewerViewModelTests : IDisposable
     public async Task EVV014()
     {
         // Arrange
-        _preferencesMock.Setup(x => x.ServerUrl).Returns("http://saved-server.com");
+        _appStateMock.Setup(x => x.ServerUrl).Returns("http://saved-server.com");
 
         // Act
         await _sut.OnInitializedAsync();

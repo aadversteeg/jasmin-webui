@@ -15,9 +15,13 @@ public interface IUserPreferencesService
     /// </summary>
     bool IsLoaded { get; }
 
-    // Side Panel
+    // Right Panel (Filters)
     bool IsPanelOpen { get; set; }
     int PanelWidth { get; set; }
+
+    // Left Panel
+    bool IsLeftPanelOpen { get; set; }
+    int LeftPanelWidth { get; set; }
 
     // Filters
     IReadOnlyList<string> KnownServers { get; }
@@ -31,10 +35,6 @@ public interface IUserPreferencesService
 
     bool IsServerFilterExpanded { get; set; }
     bool IsEventTypeFilterExpanded { get; set; }
-
-    // Connection
-    string? ServerUrl { get; set; }
-    string? LastEventId { get; set; }
 
     /// <summary>
     /// Event raised when any preference changes.

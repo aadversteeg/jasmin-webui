@@ -11,6 +11,7 @@ public class UserPreferencesService : IUserPreferencesService
     private const int MinPanelWidth = 200;
     private const int MaxPanelWidth = 800;
     private const int DefaultPanelWidth = 400;
+    private const int DefaultLeftPanelWidth = 300;
 
     private readonly ILocalStorageService _localStorage;
     private UserPreferences _preferences = new();
@@ -34,13 +35,14 @@ public class UserPreferencesService : IUserPreferencesService
         {
             _preferences = saved with
             {
-                PanelWidth = Math.Clamp(saved.PanelWidth, MinPanelWidth, MaxPanelWidth)
+                PanelWidth = Math.Clamp(saved.PanelWidth, MinPanelWidth, MaxPanelWidth),
+                LeftPanelWidth = Math.Clamp(saved.LeftPanelWidth, MinPanelWidth, MaxPanelWidth)
             };
         }
         _isLoaded = true;
     }
 
-    // Side Panel
+    // Right Panel (Filters)
     public bool IsPanelOpen
     {
         get => _preferences.IsPanelOpen;
@@ -51,6 +53,19 @@ public class UserPreferencesService : IUserPreferencesService
     {
         get => _preferences.PanelWidth;
         set => UpdatePreference(p => p with { PanelWidth = Math.Clamp(value, MinPanelWidth, MaxPanelWidth) });
+    }
+
+    // Left Panel
+    public bool IsLeftPanelOpen
+    {
+        get => _preferences.IsLeftPanelOpen;
+        set => UpdatePreference(p => p with { IsLeftPanelOpen = value });
+    }
+
+    public int LeftPanelWidth
+    {
+        get => _preferences.LeftPanelWidth;
+        set => UpdatePreference(p => p with { LeftPanelWidth = Math.Clamp(value, MinPanelWidth, MaxPanelWidth) });
     }
 
     // Filters
@@ -85,19 +100,6 @@ public class UserPreferencesService : IUserPreferencesService
     {
         get => _preferences.IsEventTypeFilterExpanded;
         set => UpdatePreference(p => p with { IsEventTypeFilterExpanded = value });
-    }
-
-    // Connection
-    public string? ServerUrl
-    {
-        get => _preferences.ServerUrl;
-        set => UpdatePreference(p => p with { ServerUrl = value });
-    }
-
-    public string? LastEventId
-    {
-        get => _preferences.LastEventId;
-        set => UpdatePreference(p => p with { LastEventId = value });
     }
 
     private void UpdatePreference(Func<UserPreferences, UserPreferences> update)

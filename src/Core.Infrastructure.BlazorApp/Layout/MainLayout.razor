@@ -1,10 +1,16 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject SidePanelViewModel SidePanelVM
+@inject LeftPanelViewModel LeftPanelVM
 @inject EventViewerViewModel EventViewerVM
 @inject EventFilterViewModel FilterVM
 
 <div class="app-container">
+    @if (LeftPanelVM.IsPanelOpen)
+    {
+        <LeftPanel />
+    }
+
     <div class="main-content">
         @Body
     </div>
@@ -21,17 +27,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize SidePanelVM before first render to load saved panel state
+        // Initialize panel ViewModels before first render to load saved panel state
         await SidePanelVM.OnInitializedAsync();
+        await LeftPanelVM.OnInitializedAsync();
 
         SidePanelVM.PropertyChanged += OnViewModelPropertyChanged;
+        LeftPanelVM.PropertyChanged += OnViewModelPropertyChanged;
         FilterVM.FilterChanged += OnFilterChanged;
         EventViewerVM.EventAdded += OnEventAdded;
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SidePanelViewModel.IsPanelOpen))
+        if (e.PropertyName == nameof(SidePanelViewModel.IsPanelOpen) ||
+            e.PropertyName == nameof(LeftPanelViewModel.IsPanelOpen))
         {
             InvokeAsync(StateHasChanged);
         }
@@ -50,6 +59,7 @@
     public void Dispose()
     {
         SidePanelVM.PropertyChanged -= OnViewModelPropertyChanged;
+        LeftPanelVM.PropertyChanged -= OnViewModelPropertyChanged;
         FilterVM.FilterChanged -= OnFilterChanged;
         EventViewerVM.EventAdded -= OnEventAdded;
     }

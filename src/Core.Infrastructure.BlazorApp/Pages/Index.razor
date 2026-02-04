@@ -2,6 +2,7 @@
 @inherits MvvmComponentBase<EventViewerViewModel>
 @inject IJSRuntime JS
 @inject SidePanelViewModel SidePanelVM
+@inject LeftPanelViewModel LeftPanelVM
 @inject EventFilterViewModel FilterVM
 @inject ConfigurationViewModel ConfigVM
 
@@ -10,6 +11,13 @@
 <HeaderBar>
     <div class="container-fluid">
         <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <button class="btn btn-outline-secondary"
+                        @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
+                        title="@(LeftPanelVM.IsPanelOpen ? "Close details" : "Open details")">
+                    @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+                </button>
+            </div>
             <div class="col-auto">
                 <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
                 <span class="text-muted small">@GetConnectionText()</span>
@@ -55,7 +63,10 @@
             {
                 <div class="empty-state-icon">&#128225;</div>
                 <p>No events yet.</p>
-                <p class="text-muted small">Connect to a jasmin-server to start receiving events.</p>
+                @if (!IsConnected)
+                {
+                    <p class="text-muted small">Connect to a jasmin-server to start receiving events.</p>
+                }
             }
             else
             {

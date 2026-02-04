@@ -1,0 +1,23 @@
+@inherits MvvmComponentBase<LeftPanelViewModel>
+
+<SlidePanel Position="PanelPosition.Left"
+            Width="@ViewModel.PanelWidth"
+            WidthChanged="@OnWidthChanged">
+    <Header>
+        <div class="d-flex align-items-center justify-content-between w-100">
+            <h5 class="mb-0">Details</h5>
+        </div>
+    </Header>
+    <ChildContent>
+        <div class="placeholder-content">
+            <p class="text-muted">Content coming soon...</p>
+        </div>
+    </ChildContent>
+</SlidePanel>
+
+@code {
+    private void OnWidthChanged(int newWidth)
+    {
+        ViewModel.SetWidth(newWidth);
+    }
+}

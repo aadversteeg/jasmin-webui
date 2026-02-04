@@ -1,17 +1,16 @@
 @inherits MvvmComponentBase<SidePanelViewModel>
 @inject EventFilterViewModel FilterVM
 
-<div class="side-panel" style="width: @(ViewModel.PanelWidth)px;">
-    <div class="resize-handle" @onmousedown="StartResize"></div>
-
-    <HeaderBar>
+<SlidePanel Position="PanelPosition.Right"
+            Width="@ViewModel.PanelWidth"
+            WidthChanged="@OnWidthChanged">
+    <Header>
         <div class="d-flex align-items-center justify-content-between w-100">
             <h5 class="mb-0">Filters</h5>
             <span class="badge bg-secondary">@FilteredCount / @TotalCount</span>
         </div>
-    </HeaderBar>
-
-    <div class="panel-body">
+    </Header>
+    <ChildContent>
         <FilterPanel Title="Servers"
                      IsExpanded="@FilterVM.IsServerFilterExpanded"
                      IsExpandedChanged="@(v => FilterVM.IsServerFilterExpanded = v)"
@@ -25,8 +24,8 @@
                      OnSelectAll="@(() => FilterVM.EnableAllEventTypesCommand.Execute(null))"
                      OnDeselectAll="@(() => FilterVM.DisableAllEventTypesCommand.Execute(null))"
                      Groups="@GetEventTypeGroups()" />
-    </div>
-</div>
+    </ChildContent>
+</SlidePanel>
 
 @code {
     [Parameter]
@@ -34,12 +33,6 @@
 
     [Parameter]
     public int TotalCount { get; set; }
-
-    [Inject]
-    private IJSRuntime JS { get; set; } = default!;
-
-    private int _startX;
-    private int _startWidth;
 
     protected override void OnInitialized()
     {
@@ -73,26 +66,9 @@
         base.Dispose(disposing);
     }
 
-    private async Task StartResize(MouseEventArgs e)
+    private void OnWidthChanged(int newWidth)
     {
-        _startX = (int)e.ClientX;
-        _startWidth = ViewModel.PanelWidth;
-
-        await JS.InvokeVoidAsync("sidePanelResize.start",
-            DotNetObjectReference.Create(this), _startX, _startWidth);
-    }
-
-    [JSInvokable]
-    public void UpdateWidth(int deltaX)
-    {
-        var newWidth = _startWidth - deltaX;
         ViewModel.SetWidth(newWidth);
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void EndResize()
-    {
     }
 
     private IEnumerable<FilterPanelGroup> GetServerGroups()

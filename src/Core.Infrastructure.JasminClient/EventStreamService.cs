@@ -17,7 +17,7 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
 
     private readonly IJSRuntime _jsRuntime;
     private readonly HttpClient _httpClient;
-    private readonly IUserPreferencesService _preferences;
+    private readonly IApplicationStateService _appState;
     private readonly ILogger<EventStreamService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private DotNetObjectReference<EventStreamService>? _dotNetRef;
@@ -44,12 +44,12 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     public EventStreamService(
         IJSRuntime jsRuntime,
         HttpClient httpClient,
-        IUserPreferencesService preferences,
+        IApplicationStateService appState,
         ILogger<EventStreamService> logger)
     {
         _jsRuntime = jsRuntime;
         _httpClient = httpClient;
-        _preferences = preferences;
+        _appState = appState;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -68,11 +68,11 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
 
         try
         {
-            // Load lastEventId from preferences if not already loaded
+            // Load lastEventId from application state if not already loaded
             if (!_lastEventIdLoaded)
             {
-                await _preferences.LoadAsync();
-                _lastEventId = _preferences.LastEventId;
+                await _appState.LoadAsync();
+                _lastEventId = _appState.LastEventId;
                 _lastEventIdLoaded = true;
                 if (!string.IsNullOrEmpty(_lastEventId))
                 {
@@ -153,8 +153,8 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
         if (!string.IsNullOrEmpty(eventId) && eventId != _lastEventId)
         {
             _lastEventId = eventId;
-            // Save to preferences (fire and forget)
-            _preferences.LastEventId = eventId;
+            // Save to application state (fire and forget)
+            _appState.LastEventId = eventId;
         }
 
         try

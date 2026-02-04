@@ -1,0 +1,45 @@
+.slide-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #ffffff;
+    position: relative;
+}
+
+.panel-left {
+    border-right: 1px solid #dee2e6;
+}
+
+.panel-right {
+    border-left: 1px solid #dee2e6;
+}
+
+.resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: ew-resize;
+    background-color: transparent;
+    transition: background-color 0.2s;
+    z-index: 10;
+}
+
+.handle-left {
+    left: 0;
+}
+
+.handle-right {
+    right: 0;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+    background-color: #0d6efd;
+}
+
+.panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}

@@ -18,7 +18,7 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     private const string DefaultServerUrl = "http://localhost:5000";
 
     private readonly IEventStreamService _eventStreamService;
-    private readonly IUserPreferencesService _preferences;
+    private readonly IApplicationStateService _appState;
     private readonly List<McpServerEvent> _events = new();
     private bool _isInitialized;
 
@@ -55,11 +55,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
 
     public EventViewerViewModel(
         IEventStreamService eventStreamService,
-        IUserPreferencesService preferences,
+        IApplicationStateService appState,
         EventFilterViewModel filterViewModel)
     {
         _eventStreamService = eventStreamService;
-        _preferences = preferences;
+        _appState = appState;
         FilterViewModel = filterViewModel;
 
         _eventStreamService.EventReceived += HandleEventReceived;
@@ -72,11 +72,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     {
         if (_isInitialized) return;
 
-        await _preferences.LoadAsync();
+        await _appState.LoadAsync();
 
-        if (!string.IsNullOrWhiteSpace(_preferences.ServerUrl))
+        if (!string.IsNullOrWhiteSpace(_appState.ServerUrl))
         {
-            ServerUrl = _preferences.ServerUrl;
+            ServerUrl = _appState.ServerUrl;
         }
 
         await FilterViewModel.InitializeAsync();
@@ -113,7 +113,7 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     {
         await DisconnectAsync();
         ServerUrl = "";
-        _preferences.ServerUrl = null;
+        _appState.ServerUrl = null;
     }
 
     partial void OnServerUrlChanged(string value)
@@ -204,7 +204,7 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
 
     private Task SaveUrlAsync()
     {
-        _preferences.ServerUrl = ServerUrl;
+        _appState.ServerUrl = ServerUrl;
         return Task.CompletedTask;
     }
 

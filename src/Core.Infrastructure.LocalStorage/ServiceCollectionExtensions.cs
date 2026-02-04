@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+        services.AddScoped<IApplicationStateService, ApplicationStateService>();
         return services;
     }
 }

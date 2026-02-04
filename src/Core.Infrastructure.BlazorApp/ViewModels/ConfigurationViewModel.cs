@@ -11,10 +11,8 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 /// </summary>
 public partial class ConfigurationViewModel : ViewModelBase
 {
-    private const string ServerUrlKey = "jasmin-webui:server-url";
-
     private readonly IEventStreamService _eventStreamService;
-    private readonly ILocalStorageService _localStorage;
+    private readonly IApplicationStateService _appState;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -40,10 +38,10 @@ public partial class ConfigurationViewModel : ViewModelBase
 
     public ConfigurationViewModel(
         IEventStreamService eventStreamService,
-        ILocalStorageService localStorage)
+        IApplicationStateService appState)
     {
         _eventStreamService = eventStreamService;
-        _localStorage = localStorage;
+        _appState = appState;
     }
 
     /// <summary>
@@ -52,9 +50,9 @@ public partial class ConfigurationViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenAsync()
     {
-        // Load current URL from storage
-        var savedUrl = await _localStorage.GetAsync<string>(ServerUrlKey);
-        ServerUrl = savedUrl ?? "";
+        // Load current URL from state
+        await _appState.LoadAsync();
+        ServerUrl = _appState.ServerUrl ?? "";
         TestState = ConnectionTestState.None;
         TestErrorMessage = null;
         IsOpen = true;
@@ -94,11 +92,12 @@ public partial class ConfigurationViewModel : ViewModelBase
     /// Saves the URL and closes the dialog.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
-    private async Task SaveAsync()
+    private Task SaveAsync()
     {
-        await _localStorage.SetAsync(ServerUrlKey, ServerUrl);
+        _appState.ServerUrl = ServerUrl;
         IsOpen = false;
         UrlSaved?.Invoke(ServerUrl);
+        return Task.CompletedTask;
     }
 
     private bool CanSave() => TestState == ConnectionTestState.Success;
@@ -123,13 +122,14 @@ public partial class ConfigurationViewModel : ViewModelBase
     /// Disconnects from the server and clears the URL.
     /// </summary>
     [RelayCommand]
-    private async Task DisconnectAsync()
+    private Task DisconnectAsync()
     {
-        await _localStorage.RemoveAsync(ServerUrlKey);
+        _appState.ServerUrl = null;
         ServerUrl = "";
         TestState = ConnectionTestState.None;
         TestErrorMessage = null;
         IsOpen = false;
         DisconnectRequested?.Invoke();
+        return Task.CompletedTask;
     }
 }

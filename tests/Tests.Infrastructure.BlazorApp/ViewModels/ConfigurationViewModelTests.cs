@@ -11,17 +11,17 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 public class ConfigurationViewModelTests
 {
     private readonly Mock<IEventStreamService> _eventStreamMock;
-    private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IApplicationStateService> _appStateMock;
     private readonly ConfigurationViewModel _sut;
 
     public ConfigurationViewModelTests()
     {
         _eventStreamMock = new Mock<IEventStreamService>();
-        _localStorageMock = new Mock<ILocalStorageService>();
+        _appStateMock = new Mock<IApplicationStateService>();
 
         _sut = new ConfigurationViewModel(
             _eventStreamMock.Object,
-            _localStorageMock.Object);
+            _appStateMock.Object);
     }
 
     [Fact(DisplayName = "CFG-001: IsOpen should default to false")]
@@ -40,13 +40,11 @@ public class ConfigurationViewModelTests
         _sut.IsOpen.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "CFG-003: OpenCommand should load saved URL from storage")]
+    [Fact(DisplayName = "CFG-003: OpenCommand should load saved URL from state")]
     public async Task CFG003()
     {
         // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<string>("jasmin-webui:server-url"))
-            .ReturnsAsync("http://saved-server.com");
+        _appStateMock.Setup(x => x.ServerUrl).Returns("http://saved-server.com");
 
         // Act
         await _sut.OpenCommand.ExecuteAsync(null);
@@ -165,7 +163,7 @@ public class ConfigurationViewModelTests
         _sut.SaveCommand.CanExecute(null).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "CFG-010: SaveCommand should save URL to storage")]
+    [Fact(DisplayName = "CFG-010: SaveCommand should save URL to state")]
     public async Task CFG010()
     {
         // Arrange
@@ -179,9 +177,7 @@ public class ConfigurationViewModelTests
         await _sut.SaveCommand.ExecuteAsync(null);
 
         // Assert
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:server-url", "http://new-server.com"),
-            Times.Once);
+        _appStateMock.VerifySet(x => x.ServerUrl = "http://new-server.com", Times.Once);
     }
 
     [Fact(DisplayName = "CFG-011: SaveCommand should close dialog")]
@@ -253,16 +249,14 @@ public class ConfigurationViewModelTests
         _sut.TestErrorMessage.Should().BeNull();
     }
 
-    [Fact(DisplayName = "CFG-015: DisconnectCommand should clear URL from storage")]
+    [Fact(DisplayName = "CFG-015: DisconnectCommand should clear URL from state")]
     public async Task CFG015()
     {
         // Act
         await _sut.DisconnectCommand.ExecuteAsync(null);
 
         // Assert
-        _localStorageMock.Verify(
-            x => x.RemoveAsync("jasmin-webui:server-url"),
-            Times.Once);
+        _appStateMock.VerifySet(x => x.ServerUrl = null, Times.Once);
     }
 
     [Fact(DisplayName = "CFG-016: DisconnectCommand should clear ServerUrl")]

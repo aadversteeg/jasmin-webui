@@ -5,9 +5,13 @@ namespace Core.Infrastructure.LocalStorage;
 /// </summary>
 public record UserPreferences
 {
-    // Side Panel
+    // Right Panel (Filters)
     public bool IsPanelOpen { get; init; } = false;
     public int PanelWidth { get; init; } = 400;
+
+    // Left Panel
+    public bool IsLeftPanelOpen { get; init; } = false;
+    public int LeftPanelWidth { get; init; } = 300;
 
     // Filters
     public List<string> KnownServers { get; init; } = new();
@@ -15,8 +19,4 @@ public record UserPreferences
     public List<int> EnabledEventTypes { get; init; } = new();
     public bool IsServerFilterExpanded { get; init; } = true;
     public bool IsEventTypeFilterExpanded { get; init; } = true;
-
-    // Connection
-    public string? ServerUrl { get; init; }
-    public string? LastEventId { get; init; }
 }
