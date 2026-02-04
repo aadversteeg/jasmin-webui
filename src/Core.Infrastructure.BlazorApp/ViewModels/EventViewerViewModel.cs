@@ -34,6 +34,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     public EventFilterViewModel FilterViewModel { get; }
 
     /// <summary>
+    /// Child ViewModel for MCP server list.
+    /// </summary>
+    public McpServerListViewModel ServerListViewModel { get; }
+
+    /// <summary>
     /// All received events.
     /// </summary>
     public IReadOnlyList<McpServerEvent> Events => _events;
@@ -56,11 +61,13 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     public EventViewerViewModel(
         IEventStreamService eventStreamService,
         IApplicationStateService appState,
-        EventFilterViewModel filterViewModel)
+        EventFilterViewModel filterViewModel,
+        McpServerListViewModel serverListViewModel)
     {
         _eventStreamService = eventStreamService;
         _appState = appState;
         FilterViewModel = filterViewModel;
+        ServerListViewModel = serverListViewModel;
 
         _eventStreamService.EventReceived += HandleEventReceived;
         _eventStreamService.ConnectionStateChanged += HandleConnectionStateChanged;
@@ -162,6 +169,9 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
             FilterViewModel.HandleServerEvent(evt);
         }
 
+        // Forward all events to the server list for real-time updates
+        ServerListViewModel.HandleEvent(evt);
+
         // Trim old events to prevent memory issues
         while (_events.Count > MaxEvents)
         {
@@ -178,8 +188,14 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         if (state == ConnectionState.Connected)
         {
             LastError = null;
-            // Load filters from API when connected
+            // Load filters and server list from API when connected
             _ = LoadFiltersFromApiAsync();
+            _ = ServerListViewModel.LoadAsync(ServerUrl);
+        }
+        else if (state == ConnectionState.Disconnected)
+        {
+            // Clear server list when disconnected
+            ServerListViewModel.Clear();
         }
         OnPropertyChanged(nameof(ConnectionState));
     }

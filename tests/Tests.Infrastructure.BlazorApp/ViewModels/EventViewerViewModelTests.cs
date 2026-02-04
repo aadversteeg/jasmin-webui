@@ -17,8 +17,10 @@ public class EventViewerViewModelTests : IDisposable
     private readonly Mock<IApplicationStateService> _appStateMock;
     private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly Mock<IJasminApiService> _apiServiceMock;
+    private readonly Mock<IMcpServerListService> _serverListServiceMock;
     private readonly Mock<ILogger<EventFilterViewModel>> _filterLoggerMock;
     private readonly EventFilterViewModel _filterViewModel;
+    private readonly McpServerListViewModel _serverListViewModel;
     private readonly EventViewerViewModel _sut;
 
     public EventViewerViewModelTests()
@@ -32,16 +34,20 @@ public class EventViewerViewModelTests : IDisposable
         _preferencesMock.Setup(x => x.IsServerFilterExpanded).Returns(true);
         _preferencesMock.Setup(x => x.IsEventTypeFilterExpanded).Returns(true);
         _apiServiceMock = new Mock<IJasminApiService>();
+        _serverListServiceMock = new Mock<IMcpServerListService>();
+        _serverListServiceMock.Setup(x => x.Servers).Returns(new List<McpServerListItem>());
         _filterLoggerMock = new Mock<ILogger<EventFilterViewModel>>();
         _filterViewModel = new EventFilterViewModel(
             _preferencesMock.Object,
             _apiServiceMock.Object,
             _filterLoggerMock.Object);
+        _serverListViewModel = new McpServerListViewModel(_serverListServiceMock.Object);
 
         _sut = new EventViewerViewModel(
             _eventStreamMock.Object,
             _appStateMock.Object,
-            _filterViewModel);
+            _filterViewModel,
+            _serverListViewModel);
     }
 
     [Fact(DisplayName = "EVV-001: Default ServerUrl should be localhost:5000")]

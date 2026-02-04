@@ -1,0 +1,80 @@
+.mcp-server-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.mcp-server-item:last-child {
+    border-bottom: none;
+}
+
+.server-row-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.server-row-bottom {
+    display: flex;
+    align-items: center;
+    margin-top: 0.25rem;
+    /* 10px indicator + 0.5rem gap = left-align with server name */
+    padding-left: calc(10px + 0.5rem);
+}
+
+.timestamp-text {
+    flex-grow: 1;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.status-indicator.unknown {
+    background-color: #6c757d;
+}
+
+.status-indicator.verified {
+    background-color: #28a745;
+}
+
+.status-indicator.running {
+    background-color: #28a745;
+    animation: pulse-green 1.5s ease-in-out infinite;
+}
+
+.status-indicator.failed {
+    background-color: #dc3545;
+}
+
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.server-name {
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.instance-badge {
+    flex-shrink: 0;
+}
+
+.delete-btn {
+    font-size: 0.875rem;
+    line-height: 1;
+    opacity: 0.6;
+    text-decoration: none;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+}

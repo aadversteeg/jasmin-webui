@@ -21,5 +21,6 @@ builder.Services.AddScoped<EventFilterViewModel>();
 builder.Services.AddScoped<EventViewerViewModel>();
 builder.Services.AddScoped<SidePanelViewModel>();
 builder.Services.AddScoped<LeftPanelViewModel>();
+builder.Services.AddScoped<McpServerListViewModel>();
 
 await builder.Build().RunAsync();

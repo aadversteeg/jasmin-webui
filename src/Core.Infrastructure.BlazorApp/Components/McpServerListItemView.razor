@@ -1,0 +1,111 @@
+@using Core.Application.McpServers
+
+<div class="mcp-server-item">
+    <div class="server-row-top">
+        <span class="status-indicator @GetStatusClass()" title="@GetStatusTitle()"></span>
+        <span class="server-name">@Server.Name</span>
+        <span class="badge bg-secondary instance-badge">@Server.InstanceCount</span>
+    </div>
+    <div class="server-row-bottom">
+        @if (GetTimestampText() is { } timestampText)
+        {
+            <span class="timestamp-text" title="@GetTimestampTooltip()">@timestampText</span>
+        }
+        <button class="btn btn-link btn-sm text-danger delete-btn p-0"
+                @onclick="OnDeleteClick"
+                title="Delete server">
+            x
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public required McpServerListItem Server { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDelete { get; set; }
+
+    private string GetStatusClass()
+    {
+        if (Server.InstanceCount > 0)
+        {
+            return "running";
+        }
+
+        return Server.Status switch
+        {
+            McpServerStatus.Verified => "verified",
+            McpServerStatus.Failed => "failed",
+            _ => "unknown"
+        };
+    }
+
+    private string GetStatusTitle()
+    {
+        if (Server.InstanceCount > 0)
+        {
+            return $"Running ({Server.InstanceCount} instance{(Server.InstanceCount > 1 ? "s" : "")})";
+        }
+
+        return Server.Status switch
+        {
+            McpServerStatus.Verified => "Verified",
+            McpServerStatus.Failed => "Failed to start",
+            _ => "Unknown status"
+        };
+    }
+
+    private string? GetTimestampText()
+    {
+        var (timestamp, _) = GetMostRecentTimestamp();
+        if (timestamp == null) return null;
+        return FormatRelativeTime(timestamp.Value);
+    }
+
+    private string? GetTimestampTooltip()
+    {
+        var (timestamp, label) = GetMostRecentTimestamp();
+        if (timestamp == null) return null;
+        return $"{label}: {timestamp.Value:yyyy-MM-dd HH:mm:ss}";
+    }
+
+    private (DateTimeOffset? Timestamp, string Label) GetMostRecentTimestamp()
+    {
+        var verified = Server.LastVerifiedAt;
+        var metadata = Server.LastMetadataUpdateAt;
+
+        if (verified == null && metadata == null)
+        {
+            return (null, "");
+        }
+
+        if (metadata != null && (verified == null || metadata > verified))
+        {
+            return (metadata, "Metadata updated");
+        }
+
+        return (verified, "Verified");
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset timestamp)
+    {
+        var elapsed = DateTimeOffset.Now - timestamp;
+
+        if (elapsed.TotalSeconds < 60)
+            return "just now";
+        if (elapsed.TotalMinutes < 60)
+            return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24)
+            return $"{(int)elapsed.TotalHours}h ago";
+        if (elapsed.TotalDays < 30)
+            return $"{(int)elapsed.TotalDays}d ago";
+
+        return timestamp.ToString("MMM d");
+    }
+
+    private async Task OnDeleteClick()
+    {
+        await OnDelete.InvokeAsync(Server.Name);
+    }
+}

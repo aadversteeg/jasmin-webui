@@ -1,23 +1,73 @@
 @inherits MvvmComponentBase<LeftPanelViewModel>
+@inject McpServerListViewModel ServerListVM
+@inject IJSRuntime JS
 
 <SlidePanel Position="PanelPosition.Left"
             Width="@ViewModel.PanelWidth"
             WidthChanged="@OnWidthChanged">
     <Header>
         <div class="d-flex align-items-center justify-content-between w-100">
-            <h5 class="mb-0">Details</h5>
+            <h5 class="mb-0">MCP Servers</h5>
         </div>
     </Header>
     <ChildContent>
-        <div class="placeholder-content">
-            <p class="text-muted">Content coming soon...</p>
+        <div class="mcp-server-list">
+            @if (!ServerListVM.Servers.Any())
+            {
+                <div class="empty-state text-muted text-center py-3">
+                    No MCP servers
+                </div>
+            }
+            else
+            {
+                @foreach (var server in ServerListVM.Servers)
+                {
+                    <McpServerListItemView Server="server" OnDelete="HandleDeleteRequest" />
+                }
+            }
         </div>
     </ChildContent>
 </SlidePanel>
 
 @code {
+    private bool _isDisposed;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ServerListVM.ServersChanged += HandleServersChanged;
+        ServerListVM.DeleteConfirmationRequested += HandleDeleteConfirmation;
+    }
+
     private void OnWidthChanged(int newWidth)
     {
         ViewModel.SetWidth(newWidth);
+    }
+
+    private void HandleServersChanged()
+    {
+        if (_isDisposed) return;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task<bool> HandleDeleteConfirmation(string serverName)
+    {
+        return await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{serverName}'?");
+    }
+
+    private async Task HandleDeleteRequest(string serverName)
+    {
+        await ServerListVM.DeleteServerCommand.ExecuteAsync(serverName);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _isDisposed = true;
+            ServerListVM.ServersChanged -= HandleServersChanged;
+            ServerListVM.DeleteConfirmationRequested -= HandleDeleteConfirmation;
+        }
+        base.Dispose(disposing);
     }
 }
