@@ -9,13 +9,13 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 
 public class SidePanelViewModelTests : IDisposable
 {
-    private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly SidePanelViewModel _sut;
 
     public SidePanelViewModelTests()
     {
-        _localStorageMock = new Mock<ILocalStorageService>();
-        _sut = new SidePanelViewModel(_localStorageMock.Object);
+        _preferencesMock = new Mock<IUserPreferencesService>();
+        _sut = new SidePanelViewModel(_preferencesMock.Object);
     }
 
     [Fact(DisplayName = "SPV-001: IsPanelOpen should default to false")]
@@ -89,39 +89,31 @@ public class SidePanelViewModelTests : IDisposable
         _sut.PanelWidth.Should().Be(500);
     }
 
-    [Fact(DisplayName = "SPV-008: PanelWidth change should persist to localStorage")]
-    public async Task SPV008()
+    [Fact(DisplayName = "SPV-008: PanelWidth change should persist to preferences")]
+    public void SPV008()
     {
         // Act
         _sut.SetWidth(450);
 
         // Assert
-        await Task.Delay(50);
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:panel-width", 450),
-            Times.Once);
+        _preferencesMock.VerifySet(x => x.PanelWidth = 450, Times.Once);
     }
 
-    [Fact(DisplayName = "SPV-009: IsPanelOpen change should persist to localStorage")]
-    public async Task SPV009()
+    [Fact(DisplayName = "SPV-009: IsPanelOpen change should persist to preferences")]
+    public void SPV009()
     {
         // Act
         _sut.TogglePanelCommand.Execute(null);
 
         // Assert
-        await Task.Delay(50);
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:panel-open", true),
-            Times.Once);
+        _preferencesMock.VerifySet(x => x.IsPanelOpen = true, Times.Once);
     }
 
     [Fact(DisplayName = "SPV-010: OnInitializedAsync should load saved width")]
     public async Task SPV010()
     {
         // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<int?>("jasmin-webui:panel-width"))
-            .ReturnsAsync(500);
+        _preferencesMock.Setup(x => x.PanelWidth).Returns(500);
 
         // Act
         await _sut.OnInitializedAsync();
@@ -134,9 +126,7 @@ public class SidePanelViewModelTests : IDisposable
     public async Task SPV011()
     {
         // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<bool?>("jasmin-webui:panel-open"))
-            .ReturnsAsync(true);
+        _preferencesMock.Setup(x => x.IsPanelOpen).Returns(true);
 
         // Act
         await _sut.OnInitializedAsync();
@@ -145,33 +135,26 @@ public class SidePanelViewModelTests : IDisposable
         _sut.IsPanelOpen.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "SPV-012: OnInitializedAsync should ignore invalid saved width (too small)")]
+    [Fact(DisplayName = "SPV-012: OnInitializedAsync should call LoadAsync on preferences")]
     public async Task SPV012()
     {
-        // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<int?>("jasmin-webui:panel-width"))
-            .ReturnsAsync(50);
-
         // Act
         await _sut.OnInitializedAsync();
 
-        // Assert - should keep default
-        _sut.PanelWidth.Should().Be(400);
+        // Assert
+        _preferencesMock.Verify(x => x.LoadAsync(), Times.Once);
     }
 
-    [Fact(DisplayName = "SPV-013: OnInitializedAsync should ignore invalid saved width (too large)")]
+    [Fact(DisplayName = "SPV-013: OnInitializedAsync should use default when preferences not loaded")]
     public async Task SPV013()
     {
-        // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<int?>("jasmin-webui:panel-width"))
-            .ReturnsAsync(1500);
+        // Arrange - preferences returns defaults
+        _preferencesMock.Setup(x => x.PanelWidth).Returns(400);
 
         // Act
         await _sut.OnInitializedAsync();
 
-        // Assert - should keep default
+        // Assert
         _sut.PanelWidth.Should().Be(400);
     }
 

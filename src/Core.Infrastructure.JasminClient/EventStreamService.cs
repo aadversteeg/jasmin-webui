@@ -14,11 +14,10 @@ namespace Core.Infrastructure.JasminClient;
 public class EventStreamService : IEventStreamService, IAsyncDisposable
 {
     private const string EventStreamPath = "/v1/events/stream";
-    private const string LastEventIdKey = "jasmin-webui:last-event-id";
 
     private readonly IJSRuntime _jsRuntime;
     private readonly HttpClient _httpClient;
-    private readonly ILocalStorageService _localStorage;
+    private readonly IUserPreferencesService _preferences;
     private readonly ILogger<EventStreamService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private DotNetObjectReference<EventStreamService>? _dotNetRef;
@@ -45,12 +44,12 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
     public EventStreamService(
         IJSRuntime jsRuntime,
         HttpClient httpClient,
-        ILocalStorageService localStorage,
+        IUserPreferencesService preferences,
         ILogger<EventStreamService> logger)
     {
         _jsRuntime = jsRuntime;
         _httpClient = httpClient;
-        _localStorage = localStorage;
+        _preferences = preferences;
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -69,10 +68,11 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
 
         try
         {
-            // Load lastEventId from localStorage if not already loaded
+            // Load lastEventId from preferences if not already loaded
             if (!_lastEventIdLoaded)
             {
-                _lastEventId = await _localStorage.GetAsync<string>(LastEventIdKey);
+                await _preferences.LoadAsync();
+                _lastEventId = _preferences.LastEventId;
                 _lastEventIdLoaded = true;
                 if (!string.IsNullOrEmpty(_lastEventId))
                 {
@@ -153,8 +153,8 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
         if (!string.IsNullOrEmpty(eventId) && eventId != _lastEventId)
         {
             _lastEventId = eventId;
-            // Save to localStorage (fire and forget)
-            _ = _localStorage.SetAsync(LastEventIdKey, eventId);
+            // Save to preferences (fire and forget)
+            _preferences.LastEventId = eventId;
         }
 
         try

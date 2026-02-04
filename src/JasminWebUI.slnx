@@ -11,4 +11,6 @@
     <Project Path="../tests/Tests.Infrastructure.JasminClient/Tests.Infrastructure.JasminClient.csproj" />
     <Project Path="../tests/Tests.Infrastructure.BlazorApp/Tests.Infrastructure.BlazorApp.csproj" />
   </Folder>
+  <Project Path="../tests/Tests.Infrastructure.LocalStorage/Tests.Infrastructure.LocalStorage.csproj" />
+  <Project Path="Core.Infrastructure.LocalStorage/Core.Infrastructure.LocalStorage.csproj" />
 </Solution>

@@ -14,7 +14,7 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 public class EventViewerViewModelTests : IDisposable
 {
     private readonly Mock<IEventStreamService> _eventStreamMock;
-    private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly Mock<IJasminApiService> _apiServiceMock;
     private readonly Mock<ILogger<EventFilterViewModel>> _filterLoggerMock;
     private readonly EventFilterViewModel _filterViewModel;
@@ -23,17 +23,22 @@ public class EventViewerViewModelTests : IDisposable
     public EventViewerViewModelTests()
     {
         _eventStreamMock = new Mock<IEventStreamService>();
-        _localStorageMock = new Mock<ILocalStorageService>();
+        _preferencesMock = new Mock<IUserPreferencesService>();
+        _preferencesMock.Setup(x => x.KnownServers).Returns(new List<string>());
+        _preferencesMock.Setup(x => x.SelectedServers).Returns(new List<string>());
+        _preferencesMock.Setup(x => x.EnabledEventTypes).Returns(new HashSet<int>());
+        _preferencesMock.Setup(x => x.IsServerFilterExpanded).Returns(true);
+        _preferencesMock.Setup(x => x.IsEventTypeFilterExpanded).Returns(true);
         _apiServiceMock = new Mock<IJasminApiService>();
         _filterLoggerMock = new Mock<ILogger<EventFilterViewModel>>();
         _filterViewModel = new EventFilterViewModel(
-            _localStorageMock.Object,
+            _preferencesMock.Object,
             _apiServiceMock.Object,
             _filterLoggerMock.Object);
 
         _sut = new EventViewerViewModel(
             _eventStreamMock.Object,
-            _localStorageMock.Object,
+            _preferencesMock.Object,
             _filterViewModel);
     }
 
@@ -56,17 +61,14 @@ public class EventViewerViewModelTests : IDisposable
         tracker.HasChanged(nameof(EventViewerViewModel.ServerUrl)).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EVV-003: ServerUrl change should persist to local storage")]
-    public async Task EVV003()
+    [Fact(DisplayName = "EVV-003: ServerUrl change should persist to preferences")]
+    public void EVV003()
     {
         // Act
         _sut.ServerUrl = "http://example.com";
 
         // Assert
-        await Task.Delay(50);
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:server-url", "http://example.com"),
-            Times.Once);
+        _preferencesMock.VerifySet(x => x.ServerUrl = "http://example.com", Times.Once);
     }
 
     [Fact(DisplayName = "EVV-004: ConnectCommand should call StartAsync with stream URL")]
@@ -223,9 +225,7 @@ public class EventViewerViewModelTests : IDisposable
     public async Task EVV014()
     {
         // Arrange
-        _localStorageMock
-            .Setup(x => x.GetAsync<string>("jasmin-webui:server-url"))
-            .ReturnsAsync("http://saved-server.com");
+        _preferencesMock.Setup(x => x.ServerUrl).Returns("http://saved-server.com");
 
         // Act
         await _sut.OnInitializedAsync();

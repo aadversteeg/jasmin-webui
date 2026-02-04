@@ -12,18 +12,23 @@ namespace Tests.Infrastructure.BlazorApp.ViewModels;
 
 public class EventFilterViewModelTests
 {
-    private readonly Mock<ILocalStorageService> _localStorageMock;
+    private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly Mock<IJasminApiService> _apiServiceMock;
     private readonly Mock<ILogger<EventFilterViewModel>> _loggerMock;
     private readonly EventFilterViewModel _sut;
 
     public EventFilterViewModelTests()
     {
-        _localStorageMock = new Mock<ILocalStorageService>();
+        _preferencesMock = new Mock<IUserPreferencesService>();
+        _preferencesMock.Setup(x => x.KnownServers).Returns(new List<string>());
+        _preferencesMock.Setup(x => x.SelectedServers).Returns(new List<string>());
+        _preferencesMock.Setup(x => x.EnabledEventTypes).Returns(new HashSet<int>());
+        _preferencesMock.Setup(x => x.IsServerFilterExpanded).Returns(true);
+        _preferencesMock.Setup(x => x.IsEventTypeFilterExpanded).Returns(true);
         _apiServiceMock = new Mock<IJasminApiService>();
         _loggerMock = new Mock<ILogger<EventFilterViewModel>>();
         _sut = new EventFilterViewModel(
-            _localStorageMock.Object,
+            _preferencesMock.Object,
             _apiServiceMock.Object,
             _loggerMock.Object);
     }
@@ -80,8 +85,8 @@ public class EventFilterViewModelTests
         tracker.HasChanged(nameof(EventFilterViewModel.SelectedServers)).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EFV-005: SetServerSelected should persist to local storage")]
-    public async Task EFV005()
+    [Fact(DisplayName = "EFV-005: SetServerSelected should persist to preferences")]
+    public void EFV005()
     {
         // Arrange
         _sut.AddKnownServer("test-server");
@@ -89,10 +94,9 @@ public class EventFilterViewModelTests
         // Act
         _sut.SetServerSelected("test-server", false);
 
-        // Assert (give async operation time to complete)
-        await Task.Delay(50);
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:server-filter", It.IsAny<List<string>>()),
+        // Assert
+        _preferencesMock.Verify(
+            x => x.SetSelectedServers(It.IsAny<IEnumerable<string>>()),
             Times.AtLeastOnce);
     }
 
@@ -158,9 +162,7 @@ public class EventFilterViewModelTests
     {
         // Arrange
         var savedServers = new List<string> { "saved-server" };
-        _localStorageMock
-            .Setup(x => x.GetAsync<List<string>>("jasmin-webui:server-filter"))
-            .ReturnsAsync(savedServers);
+        _preferencesMock.Setup(x => x.SelectedServers).Returns(savedServers);
 
         // Act
         await _sut.InitializeAsync();
@@ -173,14 +175,12 @@ public class EventFilterViewModelTests
     public async Task EFV011()
     {
         // Arrange
-        var savedTypes = new List<McpServerEventType>
+        var savedTypes = new HashSet<int>
         {
-            McpServerEventType.Started,
-            McpServerEventType.Stopped
+            (int)McpServerEventType.Started,
+            (int)McpServerEventType.Stopped
         };
-        _localStorageMock
-            .Setup(x => x.GetAsync<List<McpServerEventType>>("jasmin-webui:event-type-filter"))
-            .ReturnsAsync(savedTypes);
+        _preferencesMock.Setup(x => x.EnabledEventTypes).Returns(savedTypes);
 
         // Act
         await _sut.InitializeAsync();
@@ -480,18 +480,19 @@ public class EventFilterViewModelTests
         filterChangedRaised.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "EFV-032: RemoveServer should save updated selection to storage")]
+    [Fact(DisplayName = "EFV-032: RemoveServer should save updated selection to preferences")]
     public void EFV032()
     {
         // Arrange
         _sut.AddKnownServer("server-to-remove");
+        _preferencesMock.Invocations.Clear();
 
         // Act
         _sut.RemoveServer("server-to-remove");
 
         // Assert
-        _localStorageMock.Verify(
-            x => x.SetAsync("jasmin-webui:server-filter", It.IsAny<List<string>>()),
+        _preferencesMock.Verify(
+            x => x.SetSelectedServers(It.IsAny<IEnumerable<string>>()),
             Times.Once);
     }
 

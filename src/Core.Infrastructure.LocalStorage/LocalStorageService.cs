@@ -2,7 +2,7 @@ using System.Text.Json;
 using Core.Application.Storage;
 using Microsoft.JSInterop;
 
-namespace Core.Infrastructure.BlazorApp.Services;
+namespace Core.Infrastructure.LocalStorage;
 
 /// <summary>
 /// Browser local storage implementation using JavaScript interop.

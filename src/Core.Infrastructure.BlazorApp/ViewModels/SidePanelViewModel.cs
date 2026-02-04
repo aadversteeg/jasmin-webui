@@ -7,10 +7,7 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 
 public partial class SidePanelViewModel : ViewModelBase
 {
-    private readonly ILocalStorageService _localStorage;
-    private const string PanelWidthKey = "jasmin-webui:panel-width";
-    private const string PanelOpenKey = "jasmin-webui:panel-open";
-    private const int DefaultWidth = 400;
+    private readonly IUserPreferencesService _preferences;
     private const int MinWidth = 200;
     private const int MaxWidth = 800;
 
@@ -18,39 +15,31 @@ public partial class SidePanelViewModel : ViewModelBase
     private bool _isPanelOpen;
 
     [ObservableProperty]
-    private int _panelWidth = DefaultWidth;
+    private int _panelWidth = 400;
 
     [ObservableProperty]
     private string _panelTitle = "Details";
 
-    public SidePanelViewModel(ILocalStorageService localStorage)
+    public SidePanelViewModel(IUserPreferencesService preferences)
     {
-        _localStorage = localStorage;
+        _preferences = preferences;
     }
 
     public override async Task OnInitializedAsync()
     {
-        var savedWidth = await _localStorage.GetAsync<int?>(PanelWidthKey);
-        if (savedWidth.HasValue && savedWidth.Value >= MinWidth && savedWidth.Value <= MaxWidth)
-        {
-            PanelWidth = savedWidth.Value;
-        }
-
-        var savedOpen = await _localStorage.GetAsync<bool?>(PanelOpenKey);
-        if (savedOpen.HasValue)
-        {
-            IsPanelOpen = savedOpen.Value;
-        }
+        await _preferences.LoadAsync();
+        PanelWidth = _preferences.PanelWidth;
+        IsPanelOpen = _preferences.IsPanelOpen;
     }
 
     partial void OnPanelWidthChanged(int value)
     {
-        _ = _localStorage.SetAsync(PanelWidthKey, value);
+        _preferences.PanelWidth = value;
     }
 
     partial void OnIsPanelOpenChanged(bool value)
     {
-        _ = _localStorage.SetAsync(PanelOpenKey, value);
+        _preferences.IsPanelOpen = value;
     }
 
     [RelayCommand]

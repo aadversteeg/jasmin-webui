@@ -14,12 +14,7 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 /// </summary>
 public partial class EventFilterViewModel : ViewModelBase
 {
-    private const string ServerFilterKey = "jasmin-webui:server-filter";
-    private const string EventTypeFilterKey = "jasmin-webui:event-type-filter";
-    private const string ServerExpandedKey = "jasmin-webui:server-filter-expanded";
-    private const string EventTypeExpandedKey = "jasmin-webui:event-type-filter-expanded";
-
-    private readonly ILocalStorageService _localStorage;
+    private readonly IUserPreferencesService _preferences;
     private readonly IJasminApiService _apiService;
     private readonly ILogger<EventFilterViewModel> _logger;
     private readonly HashSet<string> _knownServers = new();
@@ -106,11 +101,11 @@ public partial class EventFilterViewModel : ViewModelBase
     public event Action? FilterChanged;
 
     public EventFilterViewModel(
-        ILocalStorageService localStorage,
+        IUserPreferencesService preferences,
         IJasminApiService apiService,
         ILogger<EventFilterViewModel> logger)
     {
-        _localStorage = localStorage;
+        _preferences = preferences;
         _apiService = apiService;
         _logger = logger;
         _enabledEventTypes = new HashSet<McpServerEventType>(
@@ -121,58 +116,57 @@ public partial class EventFilterViewModel : ViewModelBase
     {
         if (_isInitialized) return;
 
-        var savedServers = await _localStorage.GetAsync<List<string>>(ServerFilterKey);
-        if (savedServers != null)
+        await _preferences.LoadAsync();
+
+        foreach (var server in _preferences.KnownServers)
         {
-            foreach (var server in savedServers)
-            {
-                _selectedServers.Add(server);
-            }
+            _knownServers.Add(server);
         }
 
-        var savedEventTypes = await _localStorage.GetAsync<List<McpServerEventType>>(EventTypeFilterKey);
-        if (savedEventTypes != null)
+        foreach (var server in _preferences.SelectedServers)
+        {
+            _selectedServers.Add(server);
+        }
+
+        var savedEventTypes = _preferences.EnabledEventTypes;
+        if (savedEventTypes.Count > 0)
         {
             _enabledEventTypes.Clear();
-            foreach (var eventType in savedEventTypes)
+            foreach (var eventTypeId in savedEventTypes)
             {
-                _enabledEventTypes.Add(eventType);
+                if (Enum.IsDefined(typeof(McpServerEventType), eventTypeId))
+                {
+                    _enabledEventTypes.Add((McpServerEventType)eventTypeId);
+                }
             }
         }
 
-        var savedServerExpanded = await _localStorage.GetAsync<bool?>(ServerExpandedKey);
-        if (savedServerExpanded.HasValue)
-        {
-            IsServerFilterExpanded = savedServerExpanded.Value;
-        }
-
-        var savedEventTypeExpanded = await _localStorage.GetAsync<bool?>(EventTypeExpandedKey);
-        if (savedEventTypeExpanded.HasValue)
-        {
-            IsEventTypeFilterExpanded = savedEventTypeExpanded.Value;
-        }
+        IsServerFilterExpanded = _preferences.IsServerFilterExpanded;
+        IsEventTypeFilterExpanded = _preferences.IsEventTypeFilterExpanded;
 
         _isInitialized = true;
+        OnPropertyChanged(nameof(KnownServers));
         OnPropertyChanged(nameof(SelectedServers));
         OnPropertyChanged(nameof(EnabledEventTypes));
     }
 
     partial void OnIsServerFilterExpandedChanged(bool value)
     {
-        _ = _localStorage.SetAsync(ServerExpandedKey, value);
+        _preferences.IsServerFilterExpanded = value;
     }
 
     partial void OnIsEventTypeFilterExpandedChanged(bool value)
     {
-        _ = _localStorage.SetAsync(EventTypeExpandedKey, value);
+        _preferences.IsEventTypeFilterExpanded = value;
     }
 
     public void AddKnownServer(string serverName)
     {
         if (_knownServers.Add(serverName))
         {
-            // Auto-select new servers
+            // Auto-select new servers (only truly new ones that weren't in saved preferences)
             _selectedServers.Add(serverName);
+            _ = SaveServerFilterAsync();
             OnPropertyChanged(nameof(KnownServers));
             OnPropertyChanged(nameof(SelectedServers));
         }
@@ -324,6 +318,7 @@ public partial class EventFilterViewModel : ViewModelBase
         _knownServers.Clear();
         _selectedServers.Clear();
         _deletedServers.Clear();
+        _ = SaveServerFilterAsync();
         OnPropertyChanged(nameof(KnownServers));
         OnPropertyChanged(nameof(SelectedServers));
         OnPropertyChanged(nameof(DeletedServers));
@@ -441,7 +436,7 @@ public partial class EventFilterViewModel : ViewModelBase
 
         if (removed || deselected || wasDeleted)
         {
-            if (deselected)
+            if (removed || deselected)
             {
                 _ = SaveServerFilterAsync();
             }
@@ -476,14 +471,17 @@ public partial class EventFilterViewModel : ViewModelBase
         OnPropertyChanged(nameof(EventTypeGroups));
     }
 
-    private async Task SaveServerFilterAsync()
+    private Task SaveServerFilterAsync()
     {
-        await _localStorage.SetAsync(ServerFilterKey, _selectedServers.ToList());
+        _preferences.SetKnownServers(_knownServers);
+        _preferences.SetSelectedServers(_selectedServers);
+        return Task.CompletedTask;
     }
 
-    private async Task SaveEventTypeFilterAsync()
+    private Task SaveEventTypeFilterAsync()
     {
-        await _localStorage.SetAsync(EventTypeFilterKey, _enabledEventTypes.ToList());
+        _preferences.SetEnabledEventTypes(_enabledEventTypes.Cast<int>());
+        return Task.CompletedTask;
     }
 
     /// <summary>

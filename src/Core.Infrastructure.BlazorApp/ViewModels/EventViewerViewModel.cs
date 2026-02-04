@@ -13,13 +13,12 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 /// </summary>
 public partial class EventViewerViewModel : ViewModelBase, IDisposable
 {
-    private const string ServerUrlKey = "jasmin-webui:server-url";
     private const string EventStreamPath = "/v1/events/stream";
     private const int MaxEvents = 1000;
     private const string DefaultServerUrl = "http://localhost:5000";
 
     private readonly IEventStreamService _eventStreamService;
-    private readonly ILocalStorageService _localStorage;
+    private readonly IUserPreferencesService _preferences;
     private readonly List<McpServerEvent> _events = new();
     private bool _isInitialized;
 
@@ -56,11 +55,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
 
     public EventViewerViewModel(
         IEventStreamService eventStreamService,
-        ILocalStorageService localStorage,
+        IUserPreferencesService preferences,
         EventFilterViewModel filterViewModel)
     {
         _eventStreamService = eventStreamService;
-        _localStorage = localStorage;
+        _preferences = preferences;
         FilterViewModel = filterViewModel;
 
         _eventStreamService.EventReceived += HandleEventReceived;
@@ -73,10 +72,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     {
         if (_isInitialized) return;
 
-        var savedUrl = await _localStorage.GetAsync<string>(ServerUrlKey);
-        if (!string.IsNullOrWhiteSpace(savedUrl))
+        await _preferences.LoadAsync();
+
+        if (!string.IsNullOrWhiteSpace(_preferences.ServerUrl))
         {
-            ServerUrl = savedUrl;
+            ServerUrl = _preferences.ServerUrl;
         }
 
         await FilterViewModel.InitializeAsync();
@@ -113,7 +113,7 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     {
         await DisconnectAsync();
         ServerUrl = "";
-        await _localStorage.RemoveAsync(ServerUrlKey);
+        _preferences.ServerUrl = null;
     }
 
     partial void OnServerUrlChanged(string value)
@@ -202,9 +202,10 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(FilteredEvents));
     }
 
-    private async Task SaveUrlAsync()
+    private Task SaveUrlAsync()
     {
-        await _localStorage.SetAsync(ServerUrlKey, ServerUrl);
+        _preferences.ServerUrl = ServerUrl;
+        return Task.CompletedTask;
     }
 
     public void Dispose()

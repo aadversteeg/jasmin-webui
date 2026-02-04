@@ -19,8 +19,11 @@
     private int FilteredEventCount => EventViewerVM.FilteredEvents.Count();
     private int TotalEventCount => EventViewerVM.Events.Count;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // Initialize SidePanelVM before first render to load saved panel state
+        await SidePanelVM.OnInitializedAsync();
+
         SidePanelVM.PropertyChanged += OnViewModelPropertyChanged;
         FilterVM.FilterChanged += OnFilterChanged;
         EventViewerVM.EventAdded += OnEventAdded;
