@@ -65,6 +65,8 @@ public partial class ServerDetailViewModel : NavigableViewModelBase, IDisposable
     /// <inheritdoc />
     protected override async Task LoadDataAsync()
     {
+        await _appState.LoadAsync();
+
         var serverUrl = _appState.ServerUrl;
         if (string.IsNullOrEmpty(serverUrl) || string.IsNullOrEmpty(ServerName))
         {
