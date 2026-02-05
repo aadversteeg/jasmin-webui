@@ -1,5 +1,6 @@
 @inherits MvvmComponentBase<LeftPanelViewModel>
 @inject McpServerListViewModel ServerListVM
+@inject NavigationManager NavigationManager
 @inject IJSRuntime JS
 
 <SlidePanel Position="PanelPosition.Left"
@@ -22,7 +23,9 @@
             {
                 @foreach (var server in ServerListVM.Servers)
                 {
-                    <McpServerListItemView Server="server" OnDelete="HandleDeleteRequest" />
+                    <McpServerListItemView Server="server"
+                                          IsSelected="IsServerSelected(server.Name)"
+                                          OnDelete="HandleDeleteRequest" />
                 }
             }
         </div>
@@ -37,6 +40,7 @@
         base.OnInitialized();
         ServerListVM.ServersChanged += HandleServersChanged;
         ServerListVM.DeleteConfirmationRequested += HandleDeleteConfirmation;
+        NavigationManager.LocationChanged += HandleLocationChanged;
     }
 
     private void OnWidthChanged(int newWidth)
@@ -48,6 +52,23 @@
     {
         if (_isDisposed) return;
         InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (_isDisposed) return;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsServerSelected(string serverName)
+    {
+        var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        if (relativePath.StartsWith("mcp-servers/", StringComparison.OrdinalIgnoreCase))
+        {
+            var selectedName = Uri.UnescapeDataString(relativePath["mcp-servers/".Length..]);
+            return string.Equals(selectedName, serverName, StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
     }
 
     private async Task<bool> HandleDeleteConfirmation(string serverName)
@@ -67,6 +88,7 @@
             _isDisposed = true;
             ServerListVM.ServersChanged -= HandleServersChanged;
             ServerListVM.DeleteConfirmationRequested -= HandleDeleteConfirmation;
+            NavigationManager.LocationChanged -= HandleLocationChanged;
         }
         base.Dispose(disposing);
     }

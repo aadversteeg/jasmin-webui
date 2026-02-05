@@ -7,3 +7,7 @@
     background-color: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
 }
+
+.header-bar ::deep .btn {
+    font-variant-emoji: text;
+}

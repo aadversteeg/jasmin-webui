@@ -4,6 +4,7 @@
 @inject LeftPanelViewModel LeftPanelVM
 @inject EventViewerViewModel EventViewerVM
 @inject EventFilterViewModel FilterVM
+@inject INavigationService NavigationService
 
 <div class="app-container">
     @if (LeftPanelVM.IsPanelOpen)
@@ -17,7 +18,15 @@
 
     @if (SidePanelVM.IsPanelOpen)
     {
-        <SidePanel FilteredCount="@FilteredEventCount" TotalCount="@TotalEventCount" />
+        @switch (NavigationService.CurrentSidePanelContent)
+        {
+            case SidePanelContentType.EventFilters:
+                <SidePanel FilteredCount="@FilteredEventCount" TotalCount="@TotalEventCount" />
+                break;
+            case SidePanelContentType.ServerDetail:
+                <ServerDetailSidePanel />
+                break;
+        }
     }
 </div>
 
@@ -27,14 +36,18 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // Initialize panel ViewModels before first render to load saved panel state
+        // Initialize ViewModels before first render to load saved state.
+        // EventViewerVM must be initialized here (not just in Index.razor) so that
+        // the SSE connection and server list load regardless of which page loads first.
         await SidePanelVM.OnInitializedAsync();
         await LeftPanelVM.OnInitializedAsync();
+        await EventViewerVM.OnInitializedAsync();
 
         SidePanelVM.PropertyChanged += OnViewModelPropertyChanged;
         LeftPanelVM.PropertyChanged += OnViewModelPropertyChanged;
         FilterVM.FilterChanged += OnFilterChanged;
         EventViewerVM.EventAdded += OnEventAdded;
+        NavigationService.PageContextChanged += OnPageContextChanged;
     }
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -56,11 +69,17 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void OnPageContextChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         SidePanelVM.PropertyChanged -= OnViewModelPropertyChanged;
         LeftPanelVM.PropertyChanged -= OnViewModelPropertyChanged;
         FilterVM.FilterChanged -= OnFilterChanged;
         EventViewerVM.EventAdded -= OnEventAdded;
+        NavigationService.PageContextChanged -= OnPageContextChanged;
     }
 }

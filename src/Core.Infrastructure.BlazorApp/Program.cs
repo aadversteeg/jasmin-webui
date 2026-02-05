@@ -1,5 +1,6 @@
 using Blazing.Mvvm;
 using Core.Infrastructure.BlazorApp;
+using Core.Infrastructure.BlazorApp.Services;
 using Core.Infrastructure.BlazorApp.ViewModels;
 using Core.Infrastructure.JasminClient;
 using Core.Infrastructure.LocalStorage;
@@ -13,6 +14,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // Register services
 builder.Services.AddJasminClient();
 builder.Services.AddLocalStorage();
+builder.Services.AddScoped<INavigationService, NavigationService>();
 
 // Register ViewModels (Blazing.Mvvm)
 builder.Services.AddMvvm();
@@ -22,5 +24,6 @@ builder.Services.AddScoped<EventViewerViewModel>();
 builder.Services.AddScoped<SidePanelViewModel>();
 builder.Services.AddScoped<LeftPanelViewModel>();
 builder.Services.AddScoped<McpServerListViewModel>();
+builder.Services.AddScoped<ServerDetailViewModel>();
 
 await builder.Build().RunAsync();

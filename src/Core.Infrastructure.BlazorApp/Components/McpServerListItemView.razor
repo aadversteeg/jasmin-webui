@@ -1,6 +1,7 @@
 @using Core.Application.McpServers
+@inject INavigationService NavigationService
 
-<div class="mcp-server-item">
+<div class="mcp-server-item @(IsSelected ? "selected" : "")" @onclick="OnItemClick">
     <div class="server-row-top">
         <span class="status-indicator @GetStatusClass()" title="@GetStatusTitle()"></span>
         <span class="server-name">@Server.Name</span>
@@ -11,8 +12,9 @@
         {
             <span class="timestamp-text" title="@GetTimestampTooltip()">@timestampText</span>
         }
-        <button class="btn btn-link btn-sm text-danger delete-btn p-0"
+        <button class="btn btn-link btn-sm text-secondary delete-btn p-0"
                 @onclick="OnDeleteClick"
+                @onclick:stopPropagation="true"
                 title="Delete server">
             x
         </button>
@@ -24,7 +26,15 @@
     public required McpServerListItem Server { get; set; }
 
     [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
     public EventCallback<string> OnDelete { get; set; }
+
+    private void OnItemClick()
+    {
+        NavigationService.NavigateTo($"/mcp-servers/{Uri.EscapeDataString(Server.Name)}");
+    }
 
     private string GetStatusClass()
     {

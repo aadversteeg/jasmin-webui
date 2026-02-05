@@ -1,0 +1,90 @@
+@page "/mcp-servers/{ServerName}"
+@inherits MvvmComponentBase<ServerDetailViewModel>
+@inject INavigationService NavigationService
+@inject SidePanelViewModel SidePanelVM
+@inject LeftPanelViewModel LeftPanelVM
+
+<PageTitle>@ServerName - Jasmin</PageTitle>
+
+<HeaderBar>
+    <div class="container-fluid">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <button class="btn btn-outline-secondary"
+                        @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
+                        title="@(LeftPanelVM.IsPanelOpen ? "Close servers" : "Open servers")">
+                    @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+                </button>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-outline-secondary" @onclick="NavigateHome" title="Back to events">
+                    <svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 8h3v6h3v-4h2v4h3V8h3L8 1z"/></svg>
+                </button>
+            </div>
+            <div class="col-auto">
+                <span class="text-muted small">MCP Servers</span>
+                <span class="text-muted small mx-1">/</span>
+                <span class="small fw-bold">@ServerName</span>
+            </div>
+            <div class="col"></div>
+            <div class="col-auto d-flex gap-2">
+                <button class="btn btn-outline-secondary"
+                        @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
+                        title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
+                    @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
+                </button>
+            </div>
+        </div>
+    </div>
+</HeaderBar>
+
+<div class="detail-area">
+    @if (ViewModel.IsLoading)
+    {
+        <div class="empty-state">
+            <div class="spinner-border text-secondary" role="status"></div>
+            <p class="mt-2">Loading server details...</p>
+        </div>
+    }
+    else if (ViewModel.LoadError != null)
+    {
+        <div class="empty-state">
+            <div class="alert alert-danger">@ViewModel.LoadError</div>
+        </div>
+    }
+    else
+    {
+        <div class="p-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">@ServerName</h5>
+                    <p class="text-muted">Server details coming soon.</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string ServerName { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        NavigationService.SetPageContext(SidePanelContentType.ServerDetail, ServerName);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        ViewModel.ServerName = ServerName;
+        NavigationService.SetPageContext(SidePanelContentType.ServerDetail, ServerName);
+        await ViewModel.InitializeDataAsync();
+    }
+
+    private void NavigateHome()
+    {
+        NavigationService.NavigateToHome();
+    }
+}
