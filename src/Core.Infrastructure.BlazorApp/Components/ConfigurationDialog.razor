@@ -1,83 +1,74 @@
 @inherits MvvmComponentBase<ConfigurationViewModel>
 @inject EventViewerViewModel EventViewerVM
 
-@if (ViewModel.IsOpen)
-{
-    <div class="modal-backdrop" @onclick="HandleBackdropClick"></div>
-    <div class="modal-container">
-        <div class="modal-dialog" @onclick:stopPropagation="true">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Server Configuration</h5>
-                    <button type="button" class="btn-close" @onclick="() => ViewModel.CancelCommand.Execute(null)"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="serverUrl" class="form-label">Server URL</label>
-                        <div class="input-group">
-                            <input type="text"
-                                   class="form-control"
-                                   id="serverUrl"
-                                   placeholder="http://localhost:5000"
-                                   @bind="ViewModel.ServerUrl"
-                                   @bind:event="oninput"
-                                   disabled="@IsTesting" />
-                            <button class="btn btn-outline-secondary"
-                                    type="button"
-                                    @onclick="TestConnection"
-                                    disabled="@(IsTesting || string.IsNullOrWhiteSpace(ViewModel.ServerUrl))">
-                                @if (IsTesting)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1"></span>
-                                    <span>Testing...</span>
-                                }
-                                else
-                                {
-                                    <span>Test</span>
-                                }
-                            </button>
-                        </div>
-                    </div>
-
-                    @if (ViewModel.TestState != ConnectionTestState.None)
+<ModalDialog IsOpen="@ViewModel.IsOpen"
+             Title="Server Configuration"
+             MaxWidth="500"
+             OnClose="() => ViewModel.CancelCommand.Execute(null)">
+    <ChildContent>
+        <div class="mb-3">
+            <label for="serverUrl" class="form-label">Server URL</label>
+            <div class="input-group">
+                <input type="text"
+                       class="form-control"
+                       id="serverUrl"
+                       placeholder="http://localhost:5000"
+                       @bind="ViewModel.ServerUrl"
+                       @bind:event="oninput"
+                       disabled="@IsTesting" />
+                <button class="btn btn-outline-secondary"
+                        type="button"
+                        @onclick="TestConnection"
+                        disabled="@(IsTesting || string.IsNullOrWhiteSpace(ViewModel.ServerUrl))">
+                    @if (IsTesting)
                     {
-                        <div class="test-result @GetTestResultClass()">
-                            @if (ViewModel.TestState == ConnectionTestState.Success)
-                            {
-                                <span class="test-icon">&#10003;</span>
-                                <span>Connection successful</span>
-                            }
-                            else if (ViewModel.TestState == ConnectionTestState.Failed)
-                            {
-                                <span class="test-icon">&#10007;</span>
-                                <span>@(ViewModel.TestErrorMessage ?? "Connection failed")</span>
-                            }
-                        </div>
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>Testing...</span>
                     }
-                </div>
-                <div class="modal-footer">
-                    <button type="button"
-                            class="btn btn-outline-danger me-auto"
-                            @onclick="Disconnect"
-                            disabled="@(!IsConnected)">
-                        Disconnect
-                    </button>
-                    <button type="button"
-                            class="btn btn-secondary"
-                            @onclick="() => ViewModel.CancelCommand.Execute(null)">
-                        Cancel
-                    </button>
-                    <button type="button"
-                            class="btn btn-primary"
-                            @onclick="Save"
-                            disabled="@(!CanSave)">
-                        Save
-                    </button>
-                </div>
+                    else
+                    {
+                        <span>Test</span>
+                    }
+                </button>
             </div>
         </div>
-    </div>
-}
+
+        @if (ViewModel.TestState != ConnectionTestState.None)
+        {
+            <div class="test-result @GetTestResultClass()">
+                @if (ViewModel.TestState == ConnectionTestState.Success)
+                {
+                    <span class="test-icon">&#10003;</span>
+                    <span>Connection successful</span>
+                }
+                else if (ViewModel.TestState == ConnectionTestState.Failed)
+                {
+                    <span class="test-icon">&#10007;</span>
+                    <span>@(ViewModel.TestErrorMessage ?? "Connection failed")</span>
+                }
+            </div>
+        }
+    </ChildContent>
+    <FooterContent>
+        <button type="button"
+                class="btn btn-outline-danger me-auto"
+                @onclick="Disconnect"
+                disabled="@(!IsConnected)">
+            Disconnect
+        </button>
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="Save"
+                disabled="@(!CanSave)">
+            Save
+        </button>
+        <button type="button"
+                class="btn btn-secondary"
+                @onclick="() => ViewModel.CancelCommand.Execute(null)">
+            Cancel
+        </button>
+    </FooterContent>
+</ModalDialog>
 
 @code {
     private bool IsTesting => ViewModel.TestState == ConnectionTestState.Testing;
@@ -97,11 +88,6 @@
     private async Task Disconnect()
     {
         await ViewModel.DisconnectCommand.ExecuteAsync(null);
-    }
-
-    private void HandleBackdropClick()
-    {
-        ViewModel.CancelCommand.Execute(null);
     }
 
     private string GetTestResultClass() => ViewModel.TestState switch

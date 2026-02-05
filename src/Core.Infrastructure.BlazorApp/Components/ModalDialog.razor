@@ -1,0 +1,63 @@
+@if (IsOpen)
+{
+    <div class="modal-backdrop"></div>
+    <div class="modal-container" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_containerRef">
+        <div class="modal-dialog" style="max-width: @(MaxWidth)px" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" @onclick="HandleClose"></button>
+                </div>
+                <div class="modal-body">
+                    @ChildContent
+                </div>
+                <div class="modal-footer">
+                    @FooterContent
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ElementReference _containerRef;
+    private bool _wasOpen;
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public int MaxWidth { get; set; } = 500;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            await _containerRef.FocusAsync();
+        }
+        else if (!IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+        }
+    }
+
+    private async Task HandleBackdropClick()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+}
