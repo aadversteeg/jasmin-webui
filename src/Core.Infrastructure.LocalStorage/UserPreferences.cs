@@ -19,4 +19,7 @@ public record UserPreferences
     public List<int> EnabledEventTypes { get; init; } = new();
     public bool IsServerFilterExpanded { get; init; } = true;
     public bool IsEventTypeFilterExpanded { get; init; } = true;
+
+    // Configuration view
+    public bool ShowConfigAsJson { get; init; } = false;
 }

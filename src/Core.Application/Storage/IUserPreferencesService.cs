@@ -36,6 +36,9 @@ public interface IUserPreferencesService
     bool IsServerFilterExpanded { get; set; }
     bool IsEventTypeFilterExpanded { get; set; }
 
+    // Configuration view
+    bool ShowConfigAsJson { get; set; }
+
     /// <summary>
     /// Event raised when any preference changes.
     /// </summary>

@@ -1,4 +1,8 @@
 @using Core.Application.McpServers
+@using Core.Application.Storage
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject IUserPreferencesService Preferences
 
 <div class="tab-pane-content">
     @if (Configuration == null)
@@ -9,48 +13,78 @@
     }
     else
     {
-        <div class="mb-4">
-            <h6 class="text-muted mb-2">Command</h6>
-            <code class="d-block p-2 bg-light border rounded text-dark">@Configuration.Command</code>
+        <div class="d-flex justify-content-end mb-3">
+            <div class="btn-group btn-group-sm">
+                <button type="button"
+                        class="btn @(_showJson ? "btn-outline-secondary" : "btn-secondary")"
+                        @onclick="SetFormattedView">
+                    Formatted
+                </button>
+                <button type="button"
+                        class="btn @(_showJson ? "btn-secondary" : "btn-outline-secondary")"
+                        @onclick="SetJsonView">
+                    JSON
+                </button>
+            </div>
         </div>
 
-        @if (Configuration.Args.Count > 0)
+        @if (_showJson)
         {
-            <div class="mb-4">
-                <h6 class="text-muted mb-2">Arguments</h6>
-                <ul class="list-unstyled mb-0">
-                    @foreach (var arg in Configuration.Args)
-                    {
-                        <li class="mb-1">
-                            <code class="p-1 bg-light border rounded text-secondary">@arg</code>
-                        </li>
-                    }
-                </ul>
+            <div class="position-relative">
+                <button class="btn btn-sm btn-outline-secondary position-absolute end-0 m-2"
+                        style="top: 0; z-index: 1;"
+                        @onclick="CopyJsonToClipboard"
+                        title="Copy to clipboard">
+                    @(_copied ? "Copied!" : "Copy")
+                </button>
+                <pre class="bg-light border rounded p-3 mb-0"><code>@GetConfigurationJson()</code></pre>
             </div>
         }
-
-        @if (Configuration.Env.Count > 0)
+        else
         {
             <div class="mb-4">
-                <h6 class="text-muted mb-2">Environment Variables</h6>
-                <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var kvp in Configuration.Env)
-                        {
-                            <tr>
-                                <td><code class="text-secondary">@kvp.Key</code></td>
-                                <td><code class="text-break text-secondary">@MaskSensitiveValue(kvp.Key, kvp.Value)</code></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                <h6 class="text-muted mb-2">Command</h6>
+                <code class="d-block p-2 bg-light border rounded text-dark">@Configuration.Command</code>
             </div>
+
+            @if (Configuration.Args.Count > 0)
+            {
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">Arguments</h6>
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var arg in Configuration.Args)
+                        {
+                            <li class="mb-1">
+                                <code class="p-1 bg-light border rounded text-secondary">@arg</code>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (Configuration.Env.Count > 0)
+            {
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2">Environment Variables</h6>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var kvp in Configuration.Env)
+                            {
+                                <tr>
+                                    <td><code class="text-secondary">@kvp.Key</code></td>
+                                    <td><code class="text-break text-secondary">@MaskSensitiveValue(kvp.Key, kvp.Value)</code></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
         }
     }
 </div>
@@ -58,6 +92,68 @@
 @code {
     [Parameter]
     public McpServerConfiguration? Configuration { get; set; }
+
+    [Parameter]
+    public string ServerName { get; set; } = string.Empty;
+
+    private bool _showJson;
+    private bool _copied;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Preferences.LoadAsync();
+        _showJson = Preferences.ShowConfigAsJson;
+    }
+
+    private void SetFormattedView()
+    {
+        _showJson = false;
+        Preferences.ShowConfigAsJson = false;
+    }
+
+    private void SetJsonView()
+    {
+        _showJson = true;
+        Preferences.ShowConfigAsJson = true;
+    }
+
+    private string GetConfigurationJson()
+    {
+        if (Configuration == null || string.IsNullOrEmpty(ServerName)) return "{}";
+
+        var serverConfig = new Dictionary<string, object>
+        {
+            ["command"] = Configuration.Command,
+            ["args"] = Configuration.Args
+        };
+
+        if (Configuration.Env.Count > 0)
+        {
+            serverConfig["env"] = Configuration.Env;
+        }
+
+        var wrapper = new Dictionary<string, object>
+        {
+            [ServerName] = serverConfig
+        };
+
+        return JsonSerializer.Serialize(wrapper, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+    }
+
+    private async Task CopyJsonToClipboard()
+    {
+        var json = GetConfigurationJson();
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", json);
+        _copied = true;
+        StateHasChanged();
+
+        await Task.Delay(2000);
+        _copied = false;
+        StateHasChanged();
+    }
 
     private static string MaskSensitiveValue(string key, string value)
     {

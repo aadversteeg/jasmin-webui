@@ -59,7 +59,7 @@
             @switch (ViewModel.ActiveTab)
             {
                 case "configuration":
-                    <ConfigurationTab Configuration="@ViewModel.Configuration" />
+                    <ConfigurationTab Configuration="@ViewModel.Configuration" ServerName="@ServerName" />
                     break;
                 case "tools":
                     <ToolsTab ToolsResult="@ViewModel.ToolsResult" />
@@ -71,7 +71,7 @@
                     <ResourcesTab ResourcesResult="@ViewModel.ResourcesResult" />
                     break;
                 default:
-                    <ConfigurationTab Configuration="@ViewModel.Configuration" />
+                    <ConfigurationTab Configuration="@ViewModel.Configuration" ServerName="@ServerName" />
                     break;
             }
         </TabbedView>

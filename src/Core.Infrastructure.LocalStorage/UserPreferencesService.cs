@@ -102,6 +102,12 @@ public class UserPreferencesService : IUserPreferencesService
         set => UpdatePreference(p => p with { IsEventTypeFilterExpanded = value });
     }
 
+    public bool ShowConfigAsJson
+    {
+        get => _preferences.ShowConfigAsJson;
+        set => UpdatePreference(p => p with { ShowConfigAsJson = value });
+    }
+
     private void UpdatePreference(Func<UserPreferences, UserPreferences> update)
     {
         _preferences = update(_preferences);
