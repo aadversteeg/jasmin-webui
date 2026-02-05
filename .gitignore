@@ -419,3 +419,6 @@ FodyWeavers.xsd
 
 # Playwright MCP
 .playwright-mcp/
+# Playwright screenshots (saved to repo root by MCP)
+/*.png
+/*.jpeg
