@@ -3,6 +3,7 @@ using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Core.Application.Events;
+using Core.Application.McpServers;
 using Core.Application.Storage;
 using Core.Domain.Events;
 
@@ -19,6 +20,7 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
 
     private readonly IEventStreamService _eventStreamService;
     private readonly IApplicationStateService _appState;
+    private readonly IMcpServerDetailService _serverDetailService;
     private readonly List<McpServerEvent> _events = new();
     private bool _isInitialized;
 
@@ -61,11 +63,13 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     public EventViewerViewModel(
         IEventStreamService eventStreamService,
         IApplicationStateService appState,
+        IMcpServerDetailService serverDetailService,
         EventFilterViewModel filterViewModel,
         McpServerListViewModel serverListViewModel)
     {
         _eventStreamService = eventStreamService;
         _appState = appState;
+        _serverDetailService = serverDetailService;
         FilterViewModel = filterViewModel;
         ServerListViewModel = serverListViewModel;
 
@@ -171,6 +175,9 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
 
         // Forward all events to the server list for real-time updates
         ServerListViewModel.HandleEvent(evt);
+
+        // Forward relevant events to the server detail service for real-time updates
+        _serverDetailService.HandleEvent(evt);
 
         // Trim old events to prevent memory issues
         while (_events.Count > MaxEvents)

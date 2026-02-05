@@ -1,9 +1,80 @@
+@using Core.Application.McpServers
+
 <div class="tab-pane-content">
-    <h5>Prompts</h5>
-    <p class="text-muted">Prompts list coming soon.</p>
+    @if (PromptsResult == null)
+    {
+        <div class="text-muted">
+            <p>Loading prompts...</p>
+        </div>
+    }
+    else if (PromptsResult.Items.Count == 0)
+    {
+        <div class="text-muted">
+            <p>No prompts available for this server.</p>
+        </div>
+    }
+    else
+    {
+        @if (PromptsResult.RetrievedAt.HasValue)
+        {
+            <p class="text-muted small mb-3">
+                Retrieved at @PromptsResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+            </p>
+        }
+
+        <div class="list-group list-group-flush">
+            @foreach (var prompt in PromptsResult.Items)
+            {
+                <div class="list-group-item bg-transparent border-secondary px-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">
+                                <code>@prompt.Name</code>
+                                @if (!string.IsNullOrEmpty(prompt.Title) && prompt.Title != prompt.Name)
+                                {
+                                    <span class="text-muted ms-2">@prompt.Title</span>
+                                }
+                            </h6>
+                            @if (!string.IsNullOrEmpty(prompt.Description))
+                            {
+                                <p class="mb-1 text-muted small">@prompt.Description</p>
+                            }
+                            @if (prompt.Arguments.Count > 0)
+                            {
+                                <div class="mt-2">
+                                    <span class="text-muted small">Arguments:</span>
+                                    <div class="ms-2">
+                                        @foreach (var arg in prompt.Arguments)
+                                        {
+                                            <span class="badge @(arg.Required ? "bg-primary" : "bg-secondary") me-1">
+                                                @arg.Name@(arg.Required ? "*" : "")
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (PromptsResult.Errors != null && PromptsResult.Errors.Count > 0)
+        {
+            <div class="alert alert-warning mt-3">
+                <strong>Errors:</strong>
+                <ul class="mb-0">
+                    @foreach (var error in PromptsResult.Errors)
+                    {
+                        <li>@error.Code: @error.Message</li>
+                    }
+                </ul>
+            </div>
+        }
+    }
 </div>
 
 @code {
     [Parameter]
-    public string ServerName { get; set; } = string.Empty;
+    public McpServerMetadataResult<McpServerPrompt>? PromptsResult { get; set; }
 }

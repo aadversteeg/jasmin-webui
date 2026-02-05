@@ -1,9 +1,66 @@
+@using Core.Application.McpServers
+
 <div class="tab-pane-content">
-    <h5>Tools</h5>
-    <p class="text-muted">Tools list coming soon.</p>
+    @if (ToolsResult == null)
+    {
+        <div class="text-muted">
+            <p>Loading tools...</p>
+        </div>
+    }
+    else if (ToolsResult.Items.Count == 0)
+    {
+        <div class="text-muted">
+            <p>No tools available for this server.</p>
+        </div>
+    }
+    else
+    {
+        @if (ToolsResult.RetrievedAt.HasValue)
+        {
+            <p class="text-muted small mb-3">
+                Retrieved at @ToolsResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+            </p>
+        }
+
+        <div class="list-group list-group-flush">
+            @foreach (var tool in ToolsResult.Items)
+            {
+                <div class="list-group-item bg-transparent border-secondary px-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">
+                                <code>@tool.Name</code>
+                                @if (!string.IsNullOrEmpty(tool.Title) && tool.Title != tool.Name)
+                                {
+                                    <span class="text-muted ms-2">@tool.Title</span>
+                                }
+                            </h6>
+                            @if (!string.IsNullOrEmpty(tool.Description))
+                            {
+                                <p class="mb-0 text-muted small">@tool.Description</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (ToolsResult.Errors != null && ToolsResult.Errors.Count > 0)
+        {
+            <div class="alert alert-warning mt-3">
+                <strong>Errors:</strong>
+                <ul class="mb-0">
+                    @foreach (var error in ToolsResult.Errors)
+                    {
+                        <li>@error.Code: @error.Message</li>
+                    }
+                </ul>
+            </div>
+        }
+    }
 </div>
 
 @code {
     [Parameter]
-    public string ServerName { get; set; } = string.Empty;
+    public McpServerMetadataResult<McpServerTool>? ToolsResult { get; set; }
 }

@@ -18,6 +18,7 @@ public class EventViewerViewModelTests : IDisposable
     private readonly Mock<IUserPreferencesService> _preferencesMock;
     private readonly Mock<IJasminApiService> _apiServiceMock;
     private readonly Mock<IMcpServerListService> _serverListServiceMock;
+    private readonly Mock<IMcpServerDetailService> _serverDetailServiceMock;
     private readonly Mock<ILogger<EventFilterViewModel>> _filterLoggerMock;
     private readonly EventFilterViewModel _filterViewModel;
     private readonly McpServerListViewModel _serverListViewModel;
@@ -36,6 +37,7 @@ public class EventViewerViewModelTests : IDisposable
         _apiServiceMock = new Mock<IJasminApiService>();
         _serverListServiceMock = new Mock<IMcpServerListService>();
         _serverListServiceMock.Setup(x => x.Servers).Returns(new List<McpServerListItem>());
+        _serverDetailServiceMock = new Mock<IMcpServerDetailService>();
         _filterLoggerMock = new Mock<ILogger<EventFilterViewModel>>();
         _filterViewModel = new EventFilterViewModel(
             _preferencesMock.Object,
@@ -46,6 +48,7 @@ public class EventViewerViewModelTests : IDisposable
         _sut = new EventViewerViewModel(
             _eventStreamMock.Object,
             _appStateMock.Object,
+            _serverDetailServiceMock.Object,
             _filterViewModel,
             _serverListViewModel);
     }

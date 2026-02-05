@@ -5,11 +5,14 @@ namespace Core.Infrastructure.JasminClient.Dtos;
 /// </summary>
 public record McpServerToolsListDto(
     IReadOnlyList<McpServerToolDto>? Items,
-    string? RetrievedAt);
+    string? RetrievedAt,
+    IReadOnlyList<McpServerMetadataErrorDto>? Errors);
 
 /// <summary>
 /// DTO for a single tool in the tools list.
 /// </summary>
 public record McpServerToolDto(
     string Name,
-    string? Description);
+    string? Title,
+    string? Description,
+    object? InputSchema);

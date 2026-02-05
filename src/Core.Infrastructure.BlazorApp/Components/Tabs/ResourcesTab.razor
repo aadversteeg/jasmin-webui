@@ -1,9 +1,74 @@
+@using Core.Application.McpServers
+
 <div class="tab-pane-content">
-    <h5>Resources</h5>
-    <p class="text-muted">Resources list coming soon.</p>
+    @if (ResourcesResult == null)
+    {
+        <div class="text-muted">
+            <p>Loading resources...</p>
+        </div>
+    }
+    else if (ResourcesResult.Items.Count == 0)
+    {
+        <div class="text-muted">
+            <p>No resources available for this server.</p>
+        </div>
+    }
+    else
+    {
+        @if (ResourcesResult.RetrievedAt.HasValue)
+        {
+            <p class="text-muted small mb-3">
+                Retrieved at @ResourcesResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+            </p>
+        }
+
+        <div class="list-group list-group-flush">
+            @foreach (var resource in ResourcesResult.Items)
+            {
+                <div class="list-group-item bg-transparent border-secondary px-0">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">
+                                <code>@resource.Name</code>
+                                @if (!string.IsNullOrEmpty(resource.Title) && resource.Title != resource.Name)
+                                {
+                                    <span class="text-muted ms-2">@resource.Title</span>
+                                }
+                            </h6>
+                            <p class="mb-1 small">
+                                <span class="text-muted">URI:</span>
+                                <code class="ms-1">@resource.Uri</code>
+                            </p>
+                            @if (!string.IsNullOrEmpty(resource.Description))
+                            {
+                                <p class="mb-1 text-muted small">@resource.Description</p>
+                            }
+                            @if (!string.IsNullOrEmpty(resource.MimeType))
+                            {
+                                <span class="badge bg-secondary">@resource.MimeType</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (ResourcesResult.Errors != null && ResourcesResult.Errors.Count > 0)
+        {
+            <div class="alert alert-warning mt-3">
+                <strong>Errors:</strong>
+                <ul class="mb-0">
+                    @foreach (var error in ResourcesResult.Errors)
+                    {
+                        <li>@error.Code: @error.Message</li>
+                    }
+                </ul>
+            </div>
+        }
+    }
 </div>
 
 @code {
     [Parameter]
-    public string ServerName { get; set; } = string.Empty;
+    public McpServerMetadataResult<McpServerResource>? ResourcesResult { get; set; }
 }
