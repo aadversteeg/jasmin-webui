@@ -1,7 +1,7 @@
 @inherits MvvmComponentBase<LeftPanelViewModel>
 @inject McpServerListViewModel ServerListVM
 @inject NavigationManager NavigationManager
-@inject IJSRuntime JS
+@inject ConfirmationDialogViewModel ConfirmDialogVM
 
 <SlidePanel Position="PanelPosition.Left"
             Width="@ViewModel.PanelWidth"
@@ -73,7 +73,9 @@
 
     private async Task<bool> HandleDeleteConfirmation(string serverName)
     {
-        return await JS.InvokeAsync<bool>("confirm", $"Are you sure you want to delete '{serverName}'?");
+        return await ConfirmDialogVM.ShowAsync(
+            "Delete Server",
+            $"Are you sure you want to delete '{serverName}'?");
     }
 
     private async Task HandleDeleteRequest(string serverName)

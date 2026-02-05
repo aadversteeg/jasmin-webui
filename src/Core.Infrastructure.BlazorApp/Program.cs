@@ -25,5 +25,6 @@ builder.Services.AddScoped<SidePanelViewModel>();
 builder.Services.AddScoped<LeftPanelViewModel>();
 builder.Services.AddScoped<McpServerListViewModel>();
 builder.Services.AddScoped<ServerDetailViewModel>();
+builder.Services.AddScoped<ConfirmationDialogViewModel>();
 
 await builder.Build().RunAsync();

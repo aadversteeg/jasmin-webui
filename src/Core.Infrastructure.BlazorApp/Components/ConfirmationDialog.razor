@@ -1,0 +1,62 @@
+@inherits MvvmComponentBase<ConfirmationDialogViewModel>
+
+@if (ViewModel.IsOpen)
+{
+    <div class="modal-backdrop"></div>
+    <div class="modal-container" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_containerRef">
+        <div class="modal-dialog" @onclick:stopPropagation="true">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@ViewModel.Title</h5>
+                    <button type="button" class="btn-close" @onclick="() => ViewModel.CancelCommand.Execute(null)"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0">@ViewModel.Message</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-@(ViewModel.ConfirmButtonStyle)"
+                            @onclick="() => ViewModel.ConfirmCommand.Execute(null)">
+                        @ViewModel.ConfirmButtonText
+                    </button>
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="() => ViewModel.CancelCommand.Execute(null)">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private ElementReference _containerRef;
+    private bool _wasOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ViewModel.IsOpen && !_wasOpen)
+        {
+            _wasOpen = true;
+            await _containerRef.FocusAsync();
+        }
+        else if (!ViewModel.IsOpen && _wasOpen)
+        {
+            _wasOpen = false;
+        }
+    }
+
+    private void HandleBackdropClick()
+    {
+        ViewModel.CancelCommand.Execute(null);
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            ViewModel.CancelCommand.Execute(null);
+        }
+    }
+}
