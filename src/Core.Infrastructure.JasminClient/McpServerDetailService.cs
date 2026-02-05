@@ -64,7 +64,9 @@ public class McpServerDetailService : IMcpServerDetailService
                 t.Name,
                 t.Title,
                 t.Description,
-                t.InputSchema != null ? JsonSerializer.Serialize(t.InputSchema) : null
+                t.InputSchema != null
+                    ? ToolInputSchemaParser.Parse(JsonSerializer.Serialize(t.InputSchema))
+                    : null
             )).ToList() ?? new List<McpServerTool>();
 
             DateTimeOffset? retrievedAt = null;

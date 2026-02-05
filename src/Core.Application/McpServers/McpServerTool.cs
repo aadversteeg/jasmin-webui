@@ -7,4 +7,4 @@ public record McpServerTool(
     string Name,
     string? Title,
     string? Description,
-    string? InputSchema);
+    ToolInputSchema? InputSchema);

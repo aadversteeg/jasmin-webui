@@ -25,22 +25,44 @@
         <div class="list-group list-group-flush">
             @foreach (var tool in ToolsResult.Items)
             {
+                var isExpanded = _expandedTools.Contains(tool.Name);
                 <div class="list-group-item bg-transparent border-secondary px-0">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1">
-                                <code>@tool.Name</code>
-                                @if (!string.IsNullOrEmpty(tool.Title) && tool.Title != tool.Name)
-                                {
-                                    <span class="text-muted ms-2">@tool.Title</span>
-                                }
-                            </h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <code>@tool.Name</code>
+                            @if (!string.IsNullOrEmpty(tool.Title) && tool.Title != tool.Name)
+                            {
+                                <span class="text-muted ms-2">@tool.Title</span>
+                            }
+                        </h6>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpand(tool.Name)">
+                            @(isExpanded ? "▲" : "▼")
+                        </button>
+                    </div>
+                    @if (isExpanded)
+                    {
+                        <div class="mt-2">
                             @if (!string.IsNullOrEmpty(tool.Description))
                             {
-                                <p class="mb-0 text-muted small">@tool.Description</p>
+                                <p class="mb-2 text-muted small">@tool.Description</p>
+                            }
+                            @if (tool.InputSchema?.Parameters.Count > 0)
+                            {
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @RenderParameterRows(tool.InputSchema.Parameters, 0)
+                                    </tbody>
+                                </table>
                             }
                         </div>
-                    </div>
+                    }
                 </div>
             }
         </div>
@@ -63,4 +85,103 @@
 @code {
     [Parameter]
     public McpServerMetadataResult<McpServerTool>? ToolsResult { get; set; }
+
+    private HashSet<string> _expandedTools = new();
+
+    private void ToggleExpand(string toolName)
+    {
+        if (!_expandedTools.Remove(toolName))
+        {
+            _expandedTools.Add(toolName);
+        }
+    }
+
+    private RenderFragment RenderParameterRows(IReadOnlyList<ToolInputParameter> parameters, int depth) => builder =>
+    {
+        var indent = depth * 16;
+
+        foreach (var param in parameters)
+        {
+            builder.OpenElement(0, "tr");
+
+            // Name column
+            builder.OpenElement(1, "td");
+            if (indent > 0)
+            {
+                builder.OpenElement(2, "span");
+                builder.AddAttribute(3, "style", $"margin-left: {indent}px;");
+                builder.OpenElement(4, "code");
+                builder.AddContent(5, param.Name);
+                builder.CloseElement();
+                if (param.Required)
+                {
+                    builder.OpenElement(6, "span");
+                    builder.AddAttribute(7, "class", "text-danger");
+                    builder.AddContent(8, "*");
+                    builder.CloseElement();
+                }
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(9, "code");
+                builder.AddContent(10, param.Name);
+                builder.CloseElement();
+                if (param.Required)
+                {
+                    builder.OpenElement(11, "span");
+                    builder.AddAttribute(12, "class", "text-danger");
+                    builder.AddContent(13, "*");
+                    builder.CloseElement();
+                }
+            }
+            builder.CloseElement();
+
+            // Type column
+            builder.OpenElement(14, "td");
+            builder.OpenElement(15, "code");
+            builder.AddAttribute(16, "class", "text-secondary");
+            builder.AddContent(17, param.Type);
+            builder.CloseElement();
+            builder.CloseElement();
+
+            // Description column
+            builder.OpenElement(18, "td");
+            builder.AddAttribute(19, "class", "text-muted");
+
+            if (!string.IsNullOrEmpty(param.Description))
+            {
+                builder.AddContent(20, param.Description);
+            }
+
+            if (param.EnumValues != null && param.EnumValues.Count > 0)
+            {
+                if (!string.IsNullOrEmpty(param.Description))
+                {
+                    builder.AddContent(21, " ");
+                }
+                builder.OpenElement(22, "code");
+                builder.AddContent(23, $"[{string.Join(", ", param.EnumValues)}]");
+                builder.CloseElement();
+            }
+
+            if (param.Default != null)
+            {
+                builder.AddContent(24, " (default: ");
+                builder.OpenElement(25, "code");
+                builder.AddContent(26, param.Default.ToString());
+                builder.CloseElement();
+                builder.AddContent(27, ")");
+            }
+
+            builder.CloseElement();
+            builder.CloseElement();
+
+            // Nested schema for arrays of objects
+            if (param.NestedSchema != null && param.NestedSchema.Parameters.Count > 0)
+            {
+                builder.AddContent(28, RenderParameterRows(param.NestedSchema.Parameters, depth + 1));
+            }
+        }
+    };
 }
