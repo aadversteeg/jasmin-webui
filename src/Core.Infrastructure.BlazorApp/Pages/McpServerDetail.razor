@@ -1,4 +1,5 @@
 @page "/mcp-servers/{ServerName}"
+@page "/mcp-servers/{ServerName}/{TabName}"
 @inherits MvvmComponentBase<ServerDetailViewModel>
 @inject INavigationService NavigationService
 @inject SidePanelViewModel SidePanelVM
@@ -54,20 +55,35 @@
     }
     else
     {
-        <div class="p-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">@ServerName</h5>
-                    <p class="text-muted">Server details coming soon.</p>
-                </div>
-            </div>
-        </div>
+        <TabbedView Tabs="ViewModel.Tabs" ActiveTabId="@ViewModel.ActiveTab">
+            @switch (ViewModel.ActiveTab)
+            {
+                case "configuration":
+                    <ConfigurationTab ServerName="@ServerName" />
+                    break;
+                case "tools":
+                    <ToolsTab ServerName="@ServerName" />
+                    break;
+                case "prompts":
+                    <PromptsTab ServerName="@ServerName" />
+                    break;
+                case "resources":
+                    <ResourcesTab ServerName="@ServerName" />
+                    break;
+                default:
+                    <ConfigurationTab ServerName="@ServerName" />
+                    break;
+            }
+        </TabbedView>
     }
 </div>
 
 @code {
     [Parameter]
     public string ServerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? TabName { get; set; }
 
     protected override void OnInitialized()
     {
@@ -79,6 +95,7 @@
     {
         await base.OnParametersSetAsync();
         ViewModel.ServerName = ServerName;
+        ViewModel.SetActiveTab(TabName);
         NavigationService.SetPageContext(SidePanelContentType.ServerDetail, ServerName);
         await ViewModel.InitializeDataAsync();
     }

@@ -17,3 +17,47 @@ html, body {
     right: 0.5rem;
     top: 0.5rem;
 }
+
+/* TabbedView styles */
+.tabbed-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--event-card-bg);
+}
+
+.tabbed-view .nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    flex-shrink: 0;
+}
+
+.tabbed-view .nav-tabs .nav-link {
+    color: #6c757d;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 0.75rem 1rem;
+    margin-bottom: -1px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.tabbed-view .nav-tabs .nav-link:hover {
+    color: #495057;
+    border-bottom-color: #dee2e6;
+}
+
+.tabbed-view .nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    background: transparent;
+}
+
+.tabbed-view .tab-content {
+    padding: 1rem;
+    flex: 1;
+    overflow: auto;
+}
+
+.tab-pane-content h5 {
+    margin-bottom: 0.5rem;
+}

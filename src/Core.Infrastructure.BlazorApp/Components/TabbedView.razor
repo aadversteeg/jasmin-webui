@@ -1,0 +1,38 @@
+@inject INavigationService NavigationService
+
+<div class="tabbed-view">
+    <ul class="nav nav-tabs">
+        @foreach (var tab in VisibleTabs)
+        {
+            <li class="nav-item">
+                <a class="nav-link @(tab.Id == ActiveTabId ? "active" : "")"
+                   href="@tab.Route"
+                   @onclick="() => OnTabClick(tab)"
+                   @onclick:preventDefault>
+                    @tab.Label
+                </a>
+            </li>
+        }
+    </ul>
+    <div class="tab-content">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<TabItem> Tabs { get; set; } = Array.Empty<TabItem>();
+
+    [Parameter]
+    public string ActiveTabId { get; set; } = string.Empty;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private IEnumerable<TabItem> VisibleTabs => Tabs.Where(t => t.IsVisible);
+
+    private void OnTabClick(TabItem tab)
+    {
+        NavigationService.NavigateTo(tab.Route);
+    }
+}
