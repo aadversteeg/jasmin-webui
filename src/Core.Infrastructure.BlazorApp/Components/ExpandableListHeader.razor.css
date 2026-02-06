@@ -1,0 +1,16 @@
+.expandable-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.header-buttons .btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+}

@@ -1,0 +1,40 @@
+<div class="expandable-list-header">
+    <span class="text-muted small">
+        @if (Timestamp.HasValue)
+        {
+            @TimestampLabel @Timestamp.Value.ToLocalTime().ToString(" HH:mm:ss.fff")
+        }
+    </span>
+    <div class="header-buttons">
+        <button class="btn btn-sm btn-outline-secondary" @onclick="HandleExpandAll">
+            Expand all
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="HandleCollapseAll">
+            Collapse all
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string TimestampLabel { get; set; } = "Retrieved at";
+
+    [Parameter]
+    public DateTimeOffset? Timestamp { get; set; }
+
+    [Parameter]
+    public EventCallback OnExpandAll { get; set; }
+
+    [Parameter]
+    public EventCallback OnCollapseAll { get; set; }
+
+    private async Task HandleExpandAll()
+    {
+        await OnExpandAll.InvokeAsync();
+    }
+
+    private async Task HandleCollapseAll()
+    {
+        await OnCollapseAll.InvokeAsync();
+    }
+}

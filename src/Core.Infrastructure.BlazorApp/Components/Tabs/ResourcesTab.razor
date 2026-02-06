@@ -16,12 +16,11 @@
     }
     else
     {
-        @if (ResourcesResult.RetrievedAt.HasValue)
-        {
-            <p class="text-muted small mb-3">
-                Retrieved at @ResourcesResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
-            </p>
-        }
+        <ExpandableListHeader
+            TimestampLabel="Retrieved at"
+            Timestamp="@ResourcesResult.RetrievedAt"
+            OnExpandAll="ExpandAll"
+            OnCollapseAll="CollapseAll" />
 
         <div class="items-container">
             @foreach (var resource in ResourcesResult.Items)
@@ -80,6 +79,19 @@
     private void ToggleExpand(string resourceName)
     {
         _viewModel.ToggleExpand(resourceName);
+    }
+
+    private void ExpandAll()
+    {
+        if (ResourcesResult?.Items != null)
+        {
+            _viewModel.ExpandAll(ResourcesResult.Items.Select(r => r.Name));
+        }
+    }
+
+    private void CollapseAll()
+    {
+        _viewModel.CollapseAll();
     }
 
     public void Dispose()

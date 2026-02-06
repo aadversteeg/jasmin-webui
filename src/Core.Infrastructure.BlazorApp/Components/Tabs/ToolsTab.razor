@@ -16,12 +16,11 @@
     }
     else
     {
-        @if (ToolsResult.RetrievedAt.HasValue)
-        {
-            <p class="text-muted small mb-3">
-                Retrieved at @ToolsResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
-            </p>
-        }
+        <ExpandableListHeader
+            TimestampLabel="Retrieved at"
+            Timestamp="@ToolsResult.RetrievedAt"
+            OnExpandAll="ExpandAll"
+            OnCollapseAll="CollapseAll" />
 
         <div class="items-container">
             @foreach (var tool in ToolsResult.Items)
@@ -80,6 +79,19 @@
     private void ToggleExpand(string toolName)
     {
         _viewModel.ToggleExpand(toolName);
+    }
+
+    private void ExpandAll()
+    {
+        if (ToolsResult?.Items != null)
+        {
+            _viewModel.ExpandAll(ToolsResult.Items.Select(t => t.Name));
+        }
+    }
+
+    private void CollapseAll()
+    {
+        _viewModel.CollapseAll();
     }
 
     private RenderFragment RenderParameterRows(IReadOnlyList<ToolInputParameter> parameters, int depth) => builder =>

@@ -137,11 +137,15 @@
     [Parameter]
     public required McpServerEvent Event { get; set; }
 
-    private bool IsExpanded { get; set; }
+    [Parameter]
+    public bool IsExpanded { get; set; }
 
-    private void ToggleExpand()
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+
+    private async Task ToggleExpand()
     {
-        IsExpanded = !IsExpanded;
+        await OnToggle.InvokeAsync();
     }
 
     private string GetEventClass() => Event.EventType switch

@@ -41,6 +41,11 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     public McpServerListViewModel ServerListViewModel { get; }
 
     /// <summary>
+    /// Child ViewModel for managing expanded state of events.
+    /// </summary>
+    public ExpandableItemsViewModel EventExpandState { get; } = new();
+
+    /// <summary>
     /// All received events.
     /// </summary>
     public IReadOnlyList<McpServerEvent> Events => _events;
@@ -151,8 +156,34 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
     {
         _events.Clear();
         FilterViewModel.ClearKnownServers();
+        EventExpandState.CollapseAll();
         OnPropertyChanged(nameof(Events));
         OnPropertyChanged(nameof(FilteredEvents));
+    }
+
+    /// <summary>
+    /// Gets a unique identifier for an event.
+    /// </summary>
+    public static string GetEventId(McpServerEvent evt)
+    {
+        return $"{evt.Timestamp.Ticks}_{evt.ServerName}_{evt.EventType}";
+    }
+
+    /// <summary>
+    /// Expands all currently filtered events.
+    /// </summary>
+    public void ExpandAllEvents()
+    {
+        var eventIds = FilteredEvents.Select(GetEventId);
+        EventExpandState.ExpandAll(eventIds);
+    }
+
+    /// <summary>
+    /// Collapses all events.
+    /// </summary>
+    public void CollapseAllEvents()
+    {
+        EventExpandState.CollapseAll();
     }
 
     private static string BuildStreamUrl(string serverUrl)

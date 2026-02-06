@@ -79,9 +79,18 @@
     }
     else
     {
+        <ExpandableListHeader
+            TimestampLabel="Last event at"
+            Timestamp="@FilteredEvents.FirstOrDefault()?.Timestamp"
+            OnExpandAll="ExpandAllEvents"
+            OnCollapseAll="CollapseAllEvents" />
+
         @foreach (var evt in FilteredEvents)
         {
-            <EventCard Event="evt" />
+            var eventId = EventViewerViewModel.GetEventId(evt);
+            <EventCard Event="evt"
+                       IsExpanded="@ViewModel.EventExpandState.IsExpanded(eventId)"
+                       OnToggle="() => ViewModel.EventExpandState.ToggleExpand(eventId)" />
         }
     }
 </div>
@@ -101,9 +110,16 @@
         base.OnInitialized();
         NavigationService.SetPageContext(SidePanelContentType.EventFilters, "Jasmin Event Viewer");
         ViewModel.EventAdded += HandleEventAdded;
+        ViewModel.EventExpandState.StateChanged += HandleExpandStateChanged;
         FilterVM.FilterChanged += HandleFilterChanged;
         ConfigVM.UrlSaved += HandleUrlSaved;
         ConfigVM.DisconnectRequested += HandleDisconnectRequested;
+    }
+
+    private void HandleExpandStateChanged()
+    {
+        if (_isDisposed) return;
+        InvokeAsync(StateHasChanged);
     }
 
     private void HandleFilterChanged()
@@ -154,6 +170,16 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void ExpandAllEvents()
+    {
+        ViewModel.ExpandAllEvents();
+    }
+
+    private void CollapseAllEvents()
+    {
+        ViewModel.CollapseAllEvents();
+    }
+
     private string GetConnectionClass()
     {
         // If no URL is configured, show unconfigured (gray)
@@ -195,6 +221,7 @@
         {
             _isDisposed = true;
             ViewModel.EventAdded -= HandleEventAdded;
+            ViewModel.EventExpandState.StateChanged -= HandleExpandStateChanged;
             FilterVM.FilterChanged -= HandleFilterChanged;
             ConfigVM.UrlSaved -= HandleUrlSaved;
             ConfigVM.DisconnectRequested -= HandleDisconnectRequested;

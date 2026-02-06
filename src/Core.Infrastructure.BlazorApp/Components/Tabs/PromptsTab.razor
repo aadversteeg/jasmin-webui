@@ -16,12 +16,11 @@
     }
     else
     {
-        @if (PromptsResult.RetrievedAt.HasValue)
-        {
-            <p class="text-muted small mb-3">
-                Retrieved at @PromptsResult.RetrievedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
-            </p>
-        }
+        <ExpandableListHeader
+            TimestampLabel="Retrieved at"
+            Timestamp="@PromptsResult.RetrievedAt"
+            OnExpandAll="ExpandAll"
+            OnCollapseAll="CollapseAll" />
 
         <div class="items-container">
             @foreach (var prompt in PromptsResult.Items)
@@ -95,6 +94,19 @@
     private void ToggleExpand(string promptName)
     {
         _viewModel.ToggleExpand(promptName);
+    }
+
+    private void ExpandAll()
+    {
+        if (PromptsResult?.Items != null)
+        {
+            _viewModel.ExpandAll(PromptsResult.Items.Select(p => p.Name));
+        }
+    }
+
+    private void CollapseAll()
+    {
+        _viewModel.CollapseAll();
     }
 
     public void Dispose()
