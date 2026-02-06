@@ -7,4 +7,4 @@ public record McpServerTool(
     string Name,
     string? Title,
     string? Description,
-    ToolInputSchema? InputSchema);
+    ToolInputSchema? InputSchema) : IExpandableItem;

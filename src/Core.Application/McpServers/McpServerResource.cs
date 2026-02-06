@@ -8,4 +8,4 @@ public record McpServerResource(
     string Uri,
     string? Title,
     string? Description,
-    string? MimeType);
+    string? MimeType) : IExpandableItem;

@@ -1,4 +1,5 @@
 @using Core.Application.McpServers
+@using Core.Infrastructure.BlazorApp.ViewModels
 
 <div class="tab-pane-content">
     @if (ToolsResult == null)
@@ -22,48 +23,31 @@
             </p>
         }
 
-        <div class="list-group list-group-flush">
+        <div class="items-container">
             @foreach (var tool in ToolsResult.Items)
             {
-                var isExpanded = _expandedTools.Contains(tool.Name);
-                <div class="list-group-item bg-transparent border-secondary px-0">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <code>@tool.Name</code>
-                            @if (!string.IsNullOrEmpty(tool.Title) && tool.Title != tool.Name)
-                            {
-                                <span class="text-muted ms-2">@tool.Title</span>
-                            }
-                        </h6>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpand(tool.Name)">
-                            @(isExpanded ? "▲" : "▼")
-                        </button>
-                    </div>
-                    @if (isExpanded)
+                <ExpandableItemCard
+                    Name="@tool.Name"
+                    Title="@tool.Title"
+                    Description="@tool.Description"
+                    IsExpanded="@_viewModel.IsExpanded(tool.Name)"
+                    OnToggle="() => ToggleExpand(tool.Name)">
+                    @if (tool.InputSchema?.Parameters.Count > 0)
                     {
-                        <div class="mt-2">
-                            @if (!string.IsNullOrEmpty(tool.Description))
-                            {
-                                <p class="mb-2 text-muted small">@tool.Description</p>
-                            }
-                            @if (tool.InputSchema?.Parameters.Count > 0)
-                            {
-                                <table class="table table-sm table-bordered">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Type</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @RenderParameterRows(tool.InputSchema.Parameters, 0)
-                                    </tbody>
-                                </table>
-                            }
-                        </div>
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @RenderParameterRows(tool.InputSchema.Parameters, 0)
+                            </tbody>
+                        </table>
                     }
-                </div>
+                </ExpandableItemCard>
             }
         </div>
 
@@ -86,14 +70,16 @@
     [Parameter]
     public McpServerMetadataResult<McpServerTool>? ToolsResult { get; set; }
 
-    private HashSet<string> _expandedTools = new();
+    private readonly ExpandableItemsViewModel _viewModel = new();
+
+    protected override void OnInitialized()
+    {
+        _viewModel.StateChanged += StateHasChanged;
+    }
 
     private void ToggleExpand(string toolName)
     {
-        if (!_expandedTools.Remove(toolName))
-        {
-            _expandedTools.Add(toolName);
-        }
+        _viewModel.ToggleExpand(toolName);
     }
 
     private RenderFragment RenderParameterRows(IReadOnlyList<ToolInputParameter> parameters, int depth) => builder =>
@@ -184,4 +170,9 @@
             }
         }
     };
+
+    public void Dispose()
+    {
+        _viewModel.StateChanged -= StateHasChanged;
+    }
 }

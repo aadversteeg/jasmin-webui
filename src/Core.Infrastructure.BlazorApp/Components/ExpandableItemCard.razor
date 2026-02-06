@@ -1,0 +1,63 @@
+@using Core.Application.McpServers
+
+<div class="expandable-card @(IsExpanded ? "expanded" : "")" @onclick="HandleClick">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <code class="item-name">@Name</code>
+            @if (!string.IsNullOrEmpty(Title) && Title != Name)
+            {
+                <span class="text-muted ms-2">@Title</span>
+            }
+        </div>
+        <span class="expand-icon">@(IsExpanded ? "\u25B2" : "\u25BC")</span>
+    </div>
+    @if (!IsExpanded && !string.IsNullOrEmpty(Description))
+    {
+        <div class="text-muted small mt-1 description-preview">
+            @TruncateDescription(Description)
+        </div>
+    }
+
+    @if (IsExpanded)
+    {
+        <div class="item-details mt-3" @onclick:stopPropagation="true">
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p class="mb-2 text-muted small">@Description</p>
+            }
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public required string Name { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public bool IsExpanded { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private async Task HandleClick()
+    {
+        await OnToggle.InvokeAsync();
+    }
+
+    private string TruncateDescription(string description)
+    {
+        const int maxLength = 100;
+        if (description.Length <= maxLength) return description;
+        return description[..maxLength] + "...";
+    }
+}

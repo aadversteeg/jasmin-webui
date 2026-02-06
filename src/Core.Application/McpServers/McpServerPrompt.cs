@@ -7,7 +7,7 @@ public record McpServerPrompt(
     string Name,
     string? Title,
     string? Description,
-    IReadOnlyList<McpServerPromptArgument> Arguments);
+    IReadOnlyList<McpServerPromptArgument> Arguments) : IExpandableItem;
 
 /// <summary>
 /// Represents an argument for an MCP server prompt.

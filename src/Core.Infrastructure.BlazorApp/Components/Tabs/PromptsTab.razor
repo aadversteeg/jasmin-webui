@@ -1,4 +1,5 @@
 @using Core.Application.McpServers
+@using Core.Infrastructure.BlazorApp.ViewModels
 
 <div class="tab-pane-content">
     @if (PromptsResult == null)
@@ -22,63 +23,46 @@
             </p>
         }
 
-        <div class="list-group list-group-flush">
+        <div class="items-container">
             @foreach (var prompt in PromptsResult.Items)
             {
-                var isExpanded = _expandedPrompts.Contains(prompt.Name);
-                <div class="list-group-item bg-transparent border-secondary px-0">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <code>@prompt.Name</code>
-                            @if (!string.IsNullOrEmpty(prompt.Title) && prompt.Title != prompt.Name)
-                            {
-                                <span class="text-muted ms-2">@prompt.Title</span>
-                            }
-                        </h6>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpand(prompt.Name)">
-                            @(isExpanded ? "▲" : "▼")
-                        </button>
-                    </div>
-                    @if (isExpanded)
+                <ExpandableItemCard
+                    Name="@prompt.Name"
+                    Title="@prompt.Title"
+                    Description="@prompt.Description"
+                    IsExpanded="@_viewModel.IsExpanded(prompt.Name)"
+                    OnToggle="() => ToggleExpand(prompt.Name)">
+                    @if (prompt.Arguments.Count > 0)
                     {
-                        <div class="mt-2">
-                            @if (!string.IsNullOrEmpty(prompt.Description))
-                            {
-                                <p class="mb-2 text-muted small">@prompt.Description</p>
-                            }
-                            @if (prompt.Arguments.Count > 0)
-                            {
-                                <table class="table table-sm table-bordered">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Argument</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var arg in prompt.Arguments)
-                                        {
-                                            <tr>
-                                                <td>
-                                                    <code>@arg.Name</code>
-                                                    @if (arg.Required)
-                                                    {
-                                                        <span class="text-danger">*</span>
-                                                    }
-                                                </td>
-                                                <td class="text-muted">@(arg.Description ?? "")</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-                            else
-                            {
-                                <p class="text-muted small mb-0">No arguments</p>
-                            }
-                        </div>
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Argument</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var arg in prompt.Arguments)
+                                {
+                                    <tr>
+                                        <td>
+                                            <code>@arg.Name</code>
+                                            @if (arg.Required)
+                                            {
+                                                <span class="text-danger">*</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted">@(arg.Description ?? "")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     }
-                </div>
+                    else
+                    {
+                        <p class="text-muted small mb-0">No arguments</p>
+                    }
+                </ExpandableItemCard>
             }
         </div>
 
@@ -101,13 +85,20 @@
     [Parameter]
     public McpServerMetadataResult<McpServerPrompt>? PromptsResult { get; set; }
 
-    private HashSet<string> _expandedPrompts = new();
+    private readonly ExpandableItemsViewModel _viewModel = new();
+
+    protected override void OnInitialized()
+    {
+        _viewModel.StateChanged += StateHasChanged;
+    }
 
     private void ToggleExpand(string promptName)
     {
-        if (!_expandedPrompts.Remove(promptName))
-        {
-            _expandedPrompts.Add(promptName);
-        }
+        _viewModel.ToggleExpand(promptName);
+    }
+
+    public void Dispose()
+    {
+        _viewModel.StateChanged -= StateHasChanged;
     }
 }
