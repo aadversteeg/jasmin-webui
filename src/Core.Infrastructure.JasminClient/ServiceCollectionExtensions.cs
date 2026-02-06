@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJasminApiService, JasminApiService>();
         services.AddScoped<IMcpServerListService, McpServerListService>();
         services.AddScoped<IMcpServerDetailService, McpServerDetailService>();
+        services.AddScoped<IToolInvocationService, ToolInvocationService>();
         return services;
     }
 }

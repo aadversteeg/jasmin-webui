@@ -40,6 +40,11 @@ public partial class ServerDetailViewModel : NavigableViewModelBase, IDisposable
     [ObservableProperty]
     private McpServerMetadataResult<McpServerResource>? _resourcesResult;
 
+    /// <summary>
+    /// Gets the jasmin-server URL.
+    /// </summary>
+    public string? ServerUrl => _appState.ServerUrl;
+
     public ServerDetailViewModel(
         IMcpServerDetailService detailService,
         IApplicationStateService appState)

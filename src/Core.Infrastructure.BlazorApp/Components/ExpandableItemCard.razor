@@ -9,7 +9,10 @@
                 <span class="text-muted ms-2">@Title</span>
             }
         </div>
-        <span class="expand-icon">@(IsExpanded ? "\u25B2" : "\u25BC")</span>
+        <div class="d-flex align-items-center gap-2">
+            @HeaderActions
+            <span class="expand-icon">@(IsExpanded ? "\u25B2" : "\u25BC")</span>
+        </div>
     </div>
     @if (!IsExpanded && !string.IsNullOrEmpty(Description))
     {
@@ -48,6 +51,9 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? HeaderActions { get; set; }
 
     private async Task HandleClick()
     {

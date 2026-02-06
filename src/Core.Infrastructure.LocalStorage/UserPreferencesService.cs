@@ -36,7 +36,8 @@ public class UserPreferencesService : IUserPreferencesService
             _preferences = saved with
             {
                 PanelWidth = Math.Clamp(saved.PanelWidth, MinPanelWidth, MaxPanelWidth),
-                LeftPanelWidth = Math.Clamp(saved.LeftPanelWidth, MinPanelWidth, MaxPanelWidth)
+                LeftPanelWidth = Math.Clamp(saved.LeftPanelWidth, MinPanelWidth, MaxPanelWidth),
+                ToolInvocationInputPanelWidthPercent = Math.Clamp(saved.ToolInvocationInputPanelWidthPercent, 20, 80)
             };
         }
         _isLoaded = true;
@@ -106,6 +107,13 @@ public class UserPreferencesService : IUserPreferencesService
     {
         get => _preferences.ShowConfigAsJson;
         set => UpdatePreference(p => p with { ShowConfigAsJson = value });
+    }
+
+    // Tool invocation dialog
+    public int ToolInvocationInputPanelWidthPercent
+    {
+        get => _preferences.ToolInvocationInputPanelWidthPercent;
+        set => UpdatePreference(p => p with { ToolInvocationInputPanelWidthPercent = Math.Clamp(value, 20, 80) });
     }
 
     private void UpdatePreference(Func<UserPreferences, UserPreferences> update)

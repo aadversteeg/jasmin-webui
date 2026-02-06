@@ -2,13 +2,13 @@
 {
     <div class="modal-backdrop"></div>
     <div class="modal-container" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_containerRef">
-        <div class="modal-dialog" style="max-width: @(MaxWidth)px" @onclick:stopPropagation="true">
-            <div class="modal-content">
+        <div class="modal-dialog" style="@GetDialogStyle()" @onclick:stopPropagation="true">
+            <div class="modal-content" style="@GetContentStyle()">
                 <div class="modal-header">
                     <h5 class="modal-title">@Title</h5>
                     <button type="button" class="btn-close" @onclick="HandleClose"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="@GetBodyStyle()">
                     @ChildContent
                 </div>
                 <div class="modal-footer">
@@ -26,9 +26,51 @@
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public int MaxWidth { get; set; } = 500;
+    [Parameter] public string? Width { get; set; }
+    [Parameter] public string? Height { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? FooterContent { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+
+    private string GetDialogStyle()
+    {
+        var styles = new List<string>();
+
+        if (!string.IsNullOrEmpty(Width))
+        {
+            styles.Add($"width: {Width}");
+            styles.Add($"max-width: {Width}");
+        }
+        else
+        {
+            styles.Add($"max-width: {MaxWidth}px");
+        }
+
+        if (!string.IsNullOrEmpty(Height))
+        {
+            styles.Add($"height: {Height}");
+        }
+
+        return string.Join("; ", styles);
+    }
+
+    private string GetContentStyle()
+    {
+        if (!string.IsNullOrEmpty(Height))
+        {
+            return "height: 100%; display: flex; flex-direction: column;";
+        }
+        return "";
+    }
+
+    private string GetBodyStyle()
+    {
+        if (!string.IsNullOrEmpty(Height))
+        {
+            return "flex: 1; overflow-y: auto;";
+        }
+        return "";
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -22,4 +22,7 @@ public record UserPreferences
 
     // Configuration view
     public bool ShowConfigAsJson { get; init; } = false;
+
+    // Tool invocation dialog
+    public int ToolInvocationInputPanelWidthPercent { get; init; } = 33;
 }

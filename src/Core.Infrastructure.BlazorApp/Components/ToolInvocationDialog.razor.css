@@ -1,0 +1,85 @@
+/* Split container layout */
+.split-container {
+    display: flex;
+    height: 100%;
+    gap: 0;
+}
+
+.split-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.input-panel {
+    border-right: 1px solid #dee2e6;
+}
+
+.panel-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    flex-shrink: 0;
+}
+
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Resizer handle */
+.split-resizer {
+    width: 6px;
+    background-color: #e9ecef;
+    cursor: ew-resize;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.split-resizer:hover,
+.split-resizer:active {
+    background-color: #0d6efd;
+}
+
+/* Output styles */
+.output-container {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.output-text {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.875rem;
+}
+
+.output-json {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    overflow-x: auto;
+}
+
+.output-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+}
+
+.output-resource {
+    padding: 0.5rem;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.output-resource a {
+    word-break: break-all;
+}

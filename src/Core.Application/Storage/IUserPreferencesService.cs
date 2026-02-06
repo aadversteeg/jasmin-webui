@@ -39,6 +39,9 @@ public interface IUserPreferencesService
     // Configuration view
     bool ShowConfigAsJson { get; set; }
 
+    // Tool invocation dialog
+    int ToolInvocationInputPanelWidthPercent { get; set; }
+
     /// <summary>
     /// Event raised when any preference changes.
     /// </summary>

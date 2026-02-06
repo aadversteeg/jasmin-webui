@@ -1,0 +1,15 @@
+.parameter-input label {
+    margin-bottom: 0.25rem;
+}
+
+.parameter-input code {
+    font-weight: 500;
+}
+
+.parameter-input .form-text {
+    font-size: 0.875rem;
+}
+
+.parameter-input textarea {
+    font-size: 0.875rem;
+}

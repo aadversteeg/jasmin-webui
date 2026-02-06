@@ -1,9 +1,11 @@
 @page "/mcp-servers/{ServerName}"
 @page "/mcp-servers/{ServerName}/{TabName}"
 @inherits MvvmComponentBase<ServerDetailViewModel>
+@using Core.Application.McpServers
 @inject INavigationService NavigationService
 @inject SidePanelViewModel SidePanelVM
 @inject LeftPanelViewModel LeftPanelVM
+@inject ToolInvocationViewModel ToolInvocationVM
 
 <PageTitle>@ServerName - Jasmin</PageTitle>
 
@@ -62,7 +64,7 @@
                     <ConfigurationTab Configuration="@ViewModel.Configuration" ServerName="@ServerName" />
                     break;
                 case "tools":
-                    <ToolsTab ToolsResult="@ViewModel.ToolsResult" />
+                    <ToolsTab ToolsResult="@ViewModel.ToolsResult" OnInvokeTool="HandleInvokeTool" />
                     break;
                 case "prompts":
                     <PromptsTab PromptsResult="@ViewModel.PromptsResult" />
@@ -77,6 +79,8 @@
         </TabbedView>
     }
 </div>
+
+<ToolInvocationDialog />
 
 @code {
     [Parameter]
@@ -103,5 +107,10 @@
     private void NavigateHome()
     {
         NavigationService.NavigateToHome();
+    }
+
+    private async Task HandleInvokeTool(McpServerTool tool)
+    {
+        await ToolInvocationVM.OpenAsync(tool, ServerName, ViewModel.ServerUrl);
     }
 }
