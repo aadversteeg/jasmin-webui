@@ -160,7 +160,7 @@
                        class="form-control form-control-sm"
                        value="@GetStringValue()"
                        step="@(Parameter.Type.ToLowerInvariant() == "integer" ? "1" : "any")"
-                       @onchange="HandleInputChange"
+                       @oninput="HandleInputChange"
                        placeholder="@GetPlaceholder()" />
             }
             else
@@ -168,7 +168,7 @@
                 <input type="text"
                        class="form-control form-control-sm"
                        value="@GetStringValue()"
-                       @onchange="HandleInputChange"
+                       @oninput="HandleInputChange"
                        placeholder="@GetPlaceholder()" />
             }
 

@@ -21,12 +21,49 @@
         }
         else
         {
-            <div id="tool-invocation-split-container" class="split-container">
+            <div id="tool-invocation-split-container" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
                 @* Left Panel - Input *@
                 <div class="split-panel input-panel" style="width: @(_inputPanelWidthPercent)%;">
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Input</h6>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 align-items-center">
+                            @* History navigation *@
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary"
+                                        disabled="@(!ViewModel.CanGoHistoryUp)"
+                                        @onclick="HandleHistoryUp"
+                                        title="Older history (Alt+Up)">
+                                    &#9650;
+                                </button>
+                                <button class="btn btn-outline-secondary"
+                                        disabled="@(!ViewModel.CanGoHistoryDown)"
+                                        @onclick="HandleHistoryDown"
+                                        title="Newer history (Alt+Down)">
+                                    &#9660;
+                                </button>
+                            </div>
+                            <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
+
+                            <div class="vr"></div>
+
+                            @* Clear buttons *@
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @onclick="HandleClearDraft"
+                                    title="Clear inputs (reset to defaults)">
+                                Clear
+                            </button>
+                            @if (ViewModel.HistoryCount > 0)
+                            {
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @onclick="HandleClearHistory"
+                                        title="Clear all history for this tool">
+                                    Clear History
+                                </button>
+                            }
+
+                            <div class="vr"></div>
+
+                            @* View toggle and Invoke *@
                             <button class="btn btn-outline-secondary btn-sm"
                                     @onclick="ToggleInputMode"
                                     title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
@@ -87,8 +124,17 @@
 
                 @* Right Panel - Output *@
                 <div class="split-panel output-panel" style="width: @(100 - _inputPanelWidthPercent)%;">
-                    <div class="panel-header">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Output</h6>
+                        @{
+                            var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
+                        }
+                        @if (invokedAt.HasValue)
+                        {
+                            <span class="small text-muted">
+                                @invokedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                            </span>
+                        }
                     </div>
                     <div class="panel-content">
                         @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Output)
@@ -152,9 +198,25 @@
     </ChildContent>
 
     <FooterContent>
-        <button class="btn btn-secondary" @onclick="HandleClose">
-            Close
-        </button>
+        <div class="d-flex justify-content-between w-100">
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary"
+                        disabled="@(!ViewModel.CanGoPreviousTool)"
+                        @onclick="HandlePreviousTool"
+                        title="Previous tool (Alt+Left)">
+                    Previous
+                </button>
+                <button class="btn btn-outline-secondary"
+                        disabled="@(!ViewModel.CanGoNextTool)"
+                        @onclick="HandleNextTool"
+                        title="Next tool (Alt+Right)">
+                    Next
+                </button>
+            </div>
+            <button class="btn btn-secondary" @onclick="HandleClose">
+                Close
+            </button>
+        </div>
     </FooterContent>
 </ModalDialog>
 
@@ -250,6 +312,13 @@
         {
             return "Invoke Tool";
         }
+
+        var toolIndex = ViewModel.CurrentToolIndex + 1;
+        var totalTools = ViewModel.AvailableTools.Count;
+        if (totalTools > 1)
+        {
+            return $"Invoke: {ViewModel.Tool.Name} ({toolIndex}/{totalTools})";
+        }
         return $"Invoke: {ViewModel.Tool.Name}";
     }
 
@@ -289,6 +358,86 @@
     private async Task HandleClose()
     {
         await ViewModel.CloseCommand.ExecuteAsync(null);
+    }
+
+    private async Task HandlePreviousTool()
+    {
+        await ViewModel.PreviousToolCommand.ExecuteAsync(null);
+        RefreshFormFromViewModel();
+    }
+
+    private async Task HandleNextTool()
+    {
+        await ViewModel.NextToolCommand.ExecuteAsync(null);
+        RefreshFormFromViewModel();
+    }
+
+    private async Task HandleHistoryUp()
+    {
+        await ViewModel.HistoryUpCommand.ExecuteAsync(null);
+        RefreshFormFromViewModel();
+    }
+
+    private void HandleHistoryDown()
+    {
+        ViewModel.HistoryDownCommand.Execute(null);
+        RefreshFormFromViewModel();
+    }
+
+    private async Task HandleClearDraft()
+    {
+        await ViewModel.ClearDraftCommand.ExecuteAsync(null);
+        RefreshFormFromViewModel();
+    }
+
+    private async Task HandleClearHistory()
+    {
+        await ViewModel.ClearHistoryCommand.ExecuteAsync(null);
+        RefreshFormFromViewModel();
+    }
+
+    private void RefreshFormFromViewModel()
+    {
+        // Sync the form state after navigation
+        if (_isJsonMode)
+        {
+            SyncFormToJson();
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        // Only handle Alt+Arrow combinations to avoid interfering with text input
+        if (!e.AltKey) return;
+
+        switch (e.Key)
+        {
+            case "ArrowUp":
+                if (ViewModel.CanGoHistoryUp)
+                {
+                    await HandleHistoryUp();
+                }
+                break;
+            case "ArrowDown":
+                if (ViewModel.CanGoHistoryDown)
+                {
+                    HandleHistoryDown();
+                }
+                break;
+            case "ArrowLeft":
+                if (ViewModel.CanGoPreviousTool)
+                {
+                    await HandlePreviousTool();
+                }
+                break;
+            case "ArrowRight":
+                if (ViewModel.CanGoNextTool)
+                {
+                    await HandleNextTool();
+                }
+                break;
+        }
     }
 
     private async Task StartResize(MouseEventArgs e)

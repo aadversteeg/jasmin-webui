@@ -111,6 +111,7 @@
 
     private async Task HandleInvokeTool(McpServerTool tool)
     {
-        await ToolInvocationVM.OpenAsync(tool, ServerName, ViewModel.ServerUrl);
+        var tools = ViewModel.ToolsResult?.Items ?? Array.Empty<McpServerTool>();
+        await ToolInvocationVM.OpenAsync(tool, ServerName, ViewModel.ServerUrl, tools);
     }
 }

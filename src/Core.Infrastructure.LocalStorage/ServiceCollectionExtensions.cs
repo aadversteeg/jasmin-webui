@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IApplicationStateService, ApplicationStateService>();
+        services.AddScoped<IToolHistoryService, ToolHistoryService>();
         return services;
     }
 }

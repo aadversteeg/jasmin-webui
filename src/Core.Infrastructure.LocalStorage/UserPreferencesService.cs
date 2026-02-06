@@ -116,6 +116,12 @@ public class UserPreferencesService : IUserPreferencesService
         set => UpdatePreference(p => p with { ToolInvocationInputPanelWidthPercent = Math.Clamp(value, 20, 80) });
     }
 
+    public int ToolInvocationHistoryMaxItems
+    {
+        get => _preferences.ToolInvocationHistoryMaxItems;
+        set => UpdatePreference(p => p with { ToolInvocationHistoryMaxItems = Math.Clamp(value, 1, 100) });
+    }
+
     private void UpdatePreference(Func<UserPreferences, UserPreferences> update)
     {
         _preferences = update(_preferences);

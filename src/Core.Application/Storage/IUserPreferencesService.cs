@@ -41,6 +41,7 @@ public interface IUserPreferencesService
 
     // Tool invocation dialog
     int ToolInvocationInputPanelWidthPercent { get; set; }
+    int ToolInvocationHistoryMaxItems { get; set; }
 
     /// <summary>
     /// Event raised when any preference changes.

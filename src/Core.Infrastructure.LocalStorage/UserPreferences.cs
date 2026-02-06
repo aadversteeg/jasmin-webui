@@ -25,4 +25,5 @@ public record UserPreferences
 
     // Tool invocation dialog
     public int ToolInvocationInputPanelWidthPercent { get; init; } = 33;
+    public int ToolInvocationHistoryMaxItems { get; init; } = 20;
 }
