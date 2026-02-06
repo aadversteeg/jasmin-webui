@@ -16,4 +16,5 @@ public record ToolInputParameter(
     bool Required,
     IReadOnlyList<string>? EnumValues,
     object? Default,
-    ToolInputSchema? NestedSchema);
+    ToolInputSchema? NestedSchema,
+    string? ItemsType);

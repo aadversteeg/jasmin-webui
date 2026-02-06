@@ -1,6 +1,7 @@
 @using Core.Application.McpServers
 @using Core.Application.Storage
 @using Core.Infrastructure.BlazorApp.ViewModels
+@using System.Text.Json
 @inherits Blazing.Mvvm.Components.MvvmComponentBase<ToolInvocationViewModel>
 @inject IUserPreferencesService UserPreferences
 @inject IJSRuntime JS
@@ -25,15 +26,22 @@
                 <div class="split-panel input-panel" style="width: @(_inputPanelWidthPercent)%;">
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Input</h6>
-                        <button class="btn btn-primary btn-sm"
-                                @onclick="HandleInvoke"
-                                disabled="@(!CanInvoke())">
-                            @if (ViewModel.IsInvoking)
-                            {
-                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                            }
-                            Invoke
-                        </button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @onclick="ToggleInputMode"
+                                    title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                                @(_isJsonMode ? "Form" : "JSON")
+                            </button>
+                            <button class="btn btn-primary btn-sm"
+                                    @onclick="HandleInvoke"
+                                    disabled="@(!CanInvoke())">
+                                @if (ViewModel.IsInvoking)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                Invoke
+                            </button>
+                        </div>
                     </div>
                     <div class="panel-content">
                         @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
@@ -43,14 +51,29 @@
 
                         @if (ViewModel.Tool?.InputSchema?.Parameters.Count > 0)
                         {
-                            <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
-                                @foreach (var param in ViewModel.Tool.InputSchema.Parameters)
+                            @if (_isJsonMode)
+                            {
+                                <textarea class="form-control font-monospace"
+                                          rows="20"
+                                          @bind="_jsonInputValue"
+                                          @bind:event="oninput"
+                                          placeholder="Enter JSON input..."></textarea>
+                                @if (!string.IsNullOrEmpty(_jsonParseError))
                                 {
-                                    <ToolParameterInput Parameter="param"
-                                                       Value="@GetInputValue(param.Name)"
-                                                       OnValueChanged="v => ViewModel.SetInputValue(param.Name, v)" />
+                                    <div class="text-danger small mt-1">@_jsonParseError</div>
                                 }
-                            </form>
+                            }
+                            else
+                            {
+                                <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+                                    @foreach (var param in ViewModel.Tool.InputSchema.Parameters)
+                                    {
+                                        <SchemaBasedInput Parameter="param"
+                                                         Value="@GetInputValue(param.Name)"
+                                                         OnValueChanged="v => ViewModel.SetInputValue(param.Name, v)" />
+                                    }
+                                </form>
+                            }
                         }
                         else
                         {
@@ -138,12 +161,87 @@
 @code {
     private double _inputPanelWidthPercent = 33;
     private double _startWidthPercent;
+    private bool _isJsonMode = false;
+    private string _jsonInputValue = "{}";
+    private string? _jsonParseError = null;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         await UserPreferences.LoadAsync();
         _inputPanelWidthPercent = UserPreferences.ToolInvocationInputPanelWidthPercent;
+    }
+
+    private void ToggleInputMode()
+    {
+        if (_isJsonMode)
+        {
+            // Switching from JSON to Form - parse JSON and populate values
+            SyncJsonToForm();
+        }
+        else
+        {
+            // Switching from Form to JSON - serialize values to JSON
+            SyncFormToJson();
+        }
+        _isJsonMode = !_isJsonMode;
+    }
+
+    private void SyncFormToJson()
+    {
+        try
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            _jsonInputValue = JsonSerializer.Serialize(ViewModel.InputValues, options);
+            _jsonParseError = null;
+        }
+        catch (Exception ex)
+        {
+            _jsonParseError = $"Error serializing: {ex.Message}";
+        }
+    }
+
+    private void SyncJsonToForm()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_jsonInputValue))
+            {
+                ViewModel.InputValues.Clear();
+                _jsonParseError = null;
+                return;
+            }
+
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(_jsonInputValue);
+            if (parsed != null)
+            {
+                ViewModel.InputValues.Clear();
+                foreach (var kvp in parsed)
+                {
+                    ViewModel.InputValues[kvp.Key] = ConvertJsonElement(kvp.Value);
+                }
+            }
+            _jsonParseError = null;
+        }
+        catch (JsonException ex)
+        {
+            _jsonParseError = $"Invalid JSON: {ex.Message}";
+        }
+    }
+
+    private object? ConvertJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Array => element.EnumerateArray().Select(ConvertJsonElement).ToList(),
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => ConvertJsonElement(p.Value)),
+            _ => null
+        };
     }
 
     private string GetTitle()
@@ -177,6 +275,14 @@
 
     private async Task HandleInvoke()
     {
+        if (_isJsonMode)
+        {
+            SyncJsonToForm();
+            if (!string.IsNullOrEmpty(_jsonParseError))
+            {
+                return; // Don't invoke if JSON is invalid
+            }
+        }
         await ViewModel.InvokeCommand.ExecuteAsync(null);
     }
 

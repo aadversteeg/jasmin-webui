@@ -85,15 +85,27 @@ public static class ToolInputSchemaParser
         var enumValues = GetEnumValues(element);
 
         ToolInputSchema? nestedSchema = null;
+        string? itemsType = null;
 
-        // Handle array of objects
+        // Handle array types
         if (type == "array" && element.TryGetProperty("items", out var items))
         {
-            if (items.TryGetProperty("type", out var itemType) &&
-                itemType.GetString() == "object")
+            if (items.TryGetProperty("type", out var itemTypeProp))
             {
-                nestedSchema = ParseSchema(items);
+                itemsType = itemTypeProp.GetString();
+
+                // Parse nested schema for arrays of objects
+                if (itemsType == "object")
+                {
+                    nestedSchema = ParseSchema(items);
+                }
             }
+        }
+
+        // Handle object types with properties
+        if (type == "object" && element.TryGetProperty("properties", out _))
+        {
+            nestedSchema = ParseSchema(element);
         }
 
         return new ToolInputParameter(
@@ -103,7 +115,8 @@ public static class ToolInputSchemaParser
             isRequired,
             enumValues,
             defaultValue,
-            nestedSchema);
+            nestedSchema,
+            itemsType);
     }
 
     private static string? GetStringProperty(JsonElement element, string propertyName)

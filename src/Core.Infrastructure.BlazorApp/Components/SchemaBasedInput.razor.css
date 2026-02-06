@@ -1,0 +1,77 @@
+.schema-input {
+    margin-bottom: 0.5rem;
+}
+
+.schema-input.nested {
+    margin-left: 1rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--bs-border-color);
+}
+
+.array-input,
+.object-input {
+    margin-bottom: 0.75rem;
+}
+
+.array-header,
+.object-header {
+    margin-bottom: 0.5rem;
+}
+
+.array-items {
+    margin-bottom: 0.5rem;
+}
+
+.array-item {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.array-item .card-header {
+    background-color: var(--bs-secondary-bg);
+    font-size: 0.85rem;
+}
+
+.array-item .card-body {
+    padding: 0.5rem;
+}
+
+.object-properties {
+    padding: 0.5rem 0;
+}
+
+.primitive-input {
+    margin-bottom: 0.75rem;
+}
+
+.primitive-input .form-label {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.primitive-input .form-text {
+    font-size: 0.8rem;
+}
+
+.form-control-sm,
+.form-select-sm {
+    font-size: 0.875rem;
+}
+
+.collapse-toggle {
+    text-decoration: none;
+    line-height: 1;
+}
+
+.collapse-toggle:hover {
+    text-decoration: none;
+}
+
+.collapse-icon {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.collapse-icon.collapsed {
+    transform: rotate(-90deg);
+}

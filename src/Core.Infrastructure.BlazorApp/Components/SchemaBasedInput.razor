@@ -1,0 +1,447 @@
+@using Core.Application.McpServers
+@using System.Text.Json
+
+<div class="schema-input @(Depth > 0 ? "nested" : "")">
+    @if (Parameter.Type.ToLowerInvariant() == "array")
+    {
+        <div class="array-input">
+            <div class="array-header">
+                <label class="form-label" title="@Parameter.Description">
+                    <code>@Parameter.Name</code>
+                    @if (Parameter.Required)
+                    {
+                        <span class="text-danger">*</span>
+                    }
+                    <span class="text-muted small ms-2">(array)</span>
+                </label>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Parameter.Description))
+            {
+                <div class="form-text mb-2">@Parameter.Description</div>
+            }
+
+            <div class="array-items">
+                @for (var i = 0; i < ArrayItems.Count; i++)
+                {
+                    var index = i;
+                    var isObjectItem = Parameter.ItemsType == "object" && Parameter.NestedSchema != null;
+                    var isCollapsed = _collapsedItems.Contains(index);
+                    <div class="array-item card mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center py-1 px-2">
+                            <div class="d-flex align-items-center">
+                                @if (isObjectItem)
+                                {
+                                    <button type="button"
+                                            class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
+                                            @onclick="() => ToggleCollapse(index)"
+                                            title="@(isCollapsed ? "Expand" : "Collapse")">
+                                        <span class="collapse-icon @(isCollapsed ? "collapsed" : "")">&#9662;</span>
+                                    </button>
+                                }
+                                <span class="small text-muted">Item @(index + 1)@(isCollapsed ? GetItemSummary(index) : "")</span>
+                            </div>
+                            <button type="button"
+                                    class="btn btn-outline-danger btn-sm py-0 px-1"
+                                    @onclick="() => RemoveItem(index)"
+                                    title="Remove item">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                        @if (!isCollapsed)
+                        {
+                            <div class="card-body py-2 px-2">
+                                @if (isObjectItem)
+                                {
+                                    @foreach (var prop in Parameter.NestedSchema!.Parameters)
+                                    {
+                                        <SchemaBasedInput Parameter="prop"
+                                                         Value="@GetArrayItemPropertyValue(index, prop.Name)"
+                                                         OnValueChanged="v => SetArrayItemPropertyValue(index, prop.Name, v)"
+                                                         Depth="Depth + 1" />
+                                    }
+                                }
+                                else
+                                {
+                                    @* Primitive array items *@
+                                    <input type="@GetInputType(Parameter.ItemsType ?? "string")"
+                                           class="form-control form-control-sm"
+                                           value="@GetArrayItemValue(index)"
+                                           @onchange="e => SetArrayItemValue(index, e.Value)" />
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    @onclick="AddItem">
+                + Add Item
+            </button>
+        </div>
+    }
+    else if (Parameter.Type.ToLowerInvariant() == "object" && Parameter.NestedSchema != null)
+    {
+        <div class="object-input">
+            <label class="form-label" title="@Parameter.Description">
+                <code>@Parameter.Name</code>
+                @if (Parameter.Required)
+                {
+                    <span class="text-danger">*</span>
+                }
+                <span class="text-muted small ms-2">(object)</span>
+            </label>
+
+            @if (!string.IsNullOrEmpty(Parameter.Description))
+            {
+                <div class="form-text mb-2">@Parameter.Description</div>
+            }
+
+            <div class="object-properties">
+                @foreach (var prop in Parameter.NestedSchema.Parameters)
+                {
+                    <SchemaBasedInput Parameter="prop"
+                                     Value="@GetObjectPropertyValue(prop.Name)"
+                                     OnValueChanged="v => SetObjectPropertyValue(prop.Name, v)"
+                                     Depth="Depth + 1" />
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        @* Primitive types *@
+        <div class="primitive-input mb-3">
+            <label class="form-label" title="@Parameter.Description">
+                <code>@Parameter.Name</code>
+                @if (Parameter.Required)
+                {
+                    <span class="text-danger">*</span>
+                }
+                @if (!string.IsNullOrEmpty(Parameter.Type))
+                {
+                    <span class="text-muted small ms-2">(@Parameter.Type)</span>
+                }
+            </label>
+
+            @if (!string.IsNullOrEmpty(Parameter.Description))
+            {
+                <div class="form-text mb-1">@Parameter.Description</div>
+            }
+
+            @if (Parameter.EnumValues != null && Parameter.EnumValues.Count > 0)
+            {
+                <select class="form-select form-select-sm" @onchange="HandleSelectChange">
+                    <option value="">Select a value...</option>
+                    @foreach (var enumValue in Parameter.EnumValues)
+                    {
+                        <option value="@enumValue" selected="@(GetStringValue() == enumValue)">@enumValue</option>
+                    }
+                </select>
+            }
+            else if (Parameter.Type.ToLowerInvariant() == "boolean")
+            {
+                <div class="form-check">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="@GetFieldId()"
+                           checked="@GetBoolValue()"
+                           @onchange="HandleCheckboxChange" />
+                    <label class="form-check-label" for="@GetFieldId()">
+                        @(GetBoolValue() ? "true" : "false")
+                    </label>
+                </div>
+            }
+            else if (Parameter.Type.ToLowerInvariant() is "integer" or "number")
+            {
+                <input type="number"
+                       class="form-control form-control-sm"
+                       value="@GetStringValue()"
+                       step="@(Parameter.Type.ToLowerInvariant() == "integer" ? "1" : "any")"
+                       @onchange="HandleInputChange"
+                       placeholder="@GetPlaceholder()" />
+            }
+            else
+            {
+                <input type="text"
+                       class="form-control form-control-sm"
+                       value="@GetStringValue()"
+                       @onchange="HandleInputChange"
+                       placeholder="@GetPlaceholder()" />
+            }
+
+            @if (Parameter.Default != null)
+            {
+                <div class="form-text text-muted">
+                    Default: <code>@Parameter.Default</code>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    [EditorRequired]
+    public ToolInputParameter Parameter { get; set; } = null!;
+
+    [Parameter]
+    public object? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<object?> OnValueChanged { get; set; }
+
+    [Parameter]
+    public int Depth { get; set; } = 0;
+
+    private HashSet<int> _collapsedItems = new();
+
+    private List<object?> ArrayItems => GetArrayItems();
+    private Dictionary<string, object?> ObjectProperties => GetObjectProperties();
+
+    private void ToggleCollapse(int index)
+    {
+        if (_collapsedItems.Contains(index))
+        {
+            _collapsedItems.Remove(index);
+        }
+        else
+        {
+            _collapsedItems.Add(index);
+        }
+    }
+
+    private string GetItemSummary(int index)
+    {
+        var items = ArrayItems;
+        if (index >= 0 && index < items.Count && items[index] is Dictionary<string, object?> itemDict)
+        {
+            var firstValue = itemDict.Values.FirstOrDefault(v => v != null && !string.IsNullOrEmpty(v.ToString()));
+            if (firstValue != null)
+            {
+                var summary = firstValue.ToString() ?? "";
+                if (summary.Length > 30)
+                {
+                    summary = summary.Substring(0, 27) + "...";
+                }
+                return $" - {summary}";
+            }
+        }
+        return "";
+    }
+
+    private List<object?> GetArrayItems()
+    {
+        if (Value is List<object?> list)
+        {
+            return list;
+        }
+        if (Value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+        {
+            var result = new List<object?>();
+            foreach (var item in jsonElement.EnumerateArray())
+            {
+                result.Add(JsonElementToObject(item));
+            }
+            return result;
+        }
+        return new List<object?>();
+    }
+
+    private Dictionary<string, object?> GetObjectProperties()
+    {
+        if (Value is Dictionary<string, object?> dict)
+        {
+            return dict;
+        }
+        if (Value is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Object)
+        {
+            var result = new Dictionary<string, object?>();
+            foreach (var prop in jsonElement.EnumerateObject())
+            {
+                result[prop.Name] = JsonElementToObject(prop.Value);
+            }
+            return result;
+        }
+        return new Dictionary<string, object?>();
+    }
+
+    private object? JsonElementToObject(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Array => element.EnumerateArray().Select(JsonElementToObject).ToList(),
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => JsonElementToObject(p.Value)),
+            _ => null
+        };
+    }
+
+    private object? GetArrayItemPropertyValue(int index, string propertyName)
+    {
+        var items = ArrayItems;
+        if (index >= 0 && index < items.Count && items[index] is Dictionary<string, object?> itemDict)
+        {
+            return itemDict.TryGetValue(propertyName, out var value) ? value : null;
+        }
+        return null;
+    }
+
+    private async Task SetArrayItemPropertyValue(int index, string propertyName, object? value)
+    {
+        var items = ArrayItems.ToList();
+        if (index >= 0 && index < items.Count)
+        {
+            if (items[index] is not Dictionary<string, object?> itemDict)
+            {
+                itemDict = new Dictionary<string, object?>();
+                items[index] = itemDict;
+            }
+            else
+            {
+                itemDict = new Dictionary<string, object?>(itemDict);
+                items[index] = itemDict;
+            }
+            itemDict[propertyName] = value;
+            await OnValueChanged.InvokeAsync(items);
+        }
+    }
+
+    private object? GetArrayItemValue(int index)
+    {
+        var items = ArrayItems;
+        return index >= 0 && index < items.Count ? items[index] : null;
+    }
+
+    private async Task SetArrayItemValue(int index, object? value)
+    {
+        var items = ArrayItems.ToList();
+        if (index >= 0 && index < items.Count)
+        {
+            items[index] = ConvertInputValue(value, Parameter.ItemsType ?? "string");
+            await OnValueChanged.InvokeAsync(items);
+        }
+    }
+
+    private object? GetObjectPropertyValue(string propertyName)
+    {
+        var props = ObjectProperties;
+        return props.TryGetValue(propertyName, out var value) ? value : null;
+    }
+
+    private async Task SetObjectPropertyValue(string propertyName, object? value)
+    {
+        var props = new Dictionary<string, object?>(ObjectProperties)
+        {
+            [propertyName] = value
+        };
+        await OnValueChanged.InvokeAsync(props);
+    }
+
+    private async Task AddItem()
+    {
+        var items = ArrayItems.ToList();
+
+        if (Parameter.ItemsType == "object" && Parameter.NestedSchema != null)
+        {
+            items.Add(new Dictionary<string, object?>());
+        }
+        else
+        {
+            items.Add(GetDefaultValueForType(Parameter.ItemsType ?? "string"));
+        }
+
+        await OnValueChanged.InvokeAsync(items);
+    }
+
+    private async Task RemoveItem(int index)
+    {
+        var items = ArrayItems.ToList();
+        if (index >= 0 && index < items.Count)
+        {
+            items.RemoveAt(index);
+            await OnValueChanged.InvokeAsync(items);
+        }
+    }
+
+    private object? GetDefaultValueForType(string type)
+    {
+        return type.ToLowerInvariant() switch
+        {
+            "number" or "integer" => 0,
+            "boolean" => false,
+            "object" => new Dictionary<string, object?>(),
+            "array" => new List<object?>(),
+            _ => ""
+        };
+    }
+
+    private object? ConvertInputValue(object? value, string type)
+    {
+        if (value == null) return null;
+
+        var strValue = value.ToString() ?? "";
+        return type.ToLowerInvariant() switch
+        {
+            "number" => double.TryParse(strValue, out var d) ? d : value,
+            "integer" => long.TryParse(strValue, out var l) ? l : value,
+            "boolean" => bool.TryParse(strValue, out var b) ? b : value,
+            _ => strValue
+        };
+    }
+
+    private string GetStringValue()
+    {
+        return Value?.ToString() ?? "";
+    }
+
+    private bool GetBoolValue()
+    {
+        if (Value is bool b) return b;
+        if (Value is string s && bool.TryParse(s, out var result)) return result;
+        return false;
+    }
+
+    private string GetPlaceholder()
+    {
+        return Parameter.Required ? "Required" : "Optional";
+    }
+
+    private string GetFieldId()
+    {
+        return $"field-{Parameter.Name}-{Depth}-{GetHashCode()}";
+    }
+
+    private string GetInputType(string paramType)
+    {
+        return paramType.ToLowerInvariant() switch
+        {
+            "number" or "integer" => "number",
+            _ => "text"
+        };
+    }
+
+    private async Task HandleInputChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString();
+        var convertedValue = ConvertInputValue(newValue, Parameter.Type);
+        await OnValueChanged.InvokeAsync(string.IsNullOrEmpty(newValue) ? null : convertedValue);
+    }
+
+    private async Task HandleSelectChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString();
+        await OnValueChanged.InvokeAsync(string.IsNullOrEmpty(newValue) ? null : newValue);
+    }
+
+    private async Task HandleCheckboxChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value is bool b && b;
+        await OnValueChanged.InvokeAsync(newValue);
+    }
+}
