@@ -80,6 +80,26 @@
 </ModalDialog>
 
 @code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        ViewModel.InstancesChanged += HandleInstancesChanged;
+    }
+
+    private void HandleInstancesChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            ViewModel.InstancesChanged -= HandleInstancesChanged;
+        }
+        base.Dispose(disposing);
+    }
+
     private string GetTitle()
     {
         return $"Instances: {ViewModel.ServerName}";

@@ -41,6 +41,11 @@ public partial class InstanceManagementViewModel : ViewModelBase
     /// </summary>
     public ObservableCollection<McpServerInstance> Instances { get; } = new();
 
+    /// <summary>
+    /// Event raised when instances are updated via SSE events.
+    /// </summary>
+    public event Action? InstancesChanged;
+
     public InstanceManagementViewModel(
         IToolInvocationService invocationService,
         IApplicationStateService appState,
@@ -224,6 +229,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
                     if (existingInstance == null)
                     {
                         Instances.Add(new McpServerInstance(e.InstanceId, e.ServerName, e.Timestamp));
+                        InstancesChanged?.Invoke();
                     }
                 }
                 break;
@@ -236,6 +242,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
                     if (instance != null)
                     {
                         Instances.Remove(instance);
+                        InstancesChanged?.Invoke();
                     }
                 }
                 break;
