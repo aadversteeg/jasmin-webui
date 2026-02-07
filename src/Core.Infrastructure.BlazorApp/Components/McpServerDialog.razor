@@ -1,5 +1,6 @@
 @inherits MvvmComponentBase<McpServerDialogViewModel>
 @using Core.Application.McpServers
+@using System.Text.Json
 
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@ViewModel.DialogTitle"
@@ -16,6 +17,50 @@
         }
         else
         {
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-outline-secondary btn-sm"
+                        @onclick="ToggleInputMode"
+                        disabled="@IsTesting"
+                        title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                    @(_isJsonMode ? "Form" : "JSON")
+                </button>
+            </div>
+
+            @if (_isJsonMode)
+            {
+                <div class="mb-3">
+                    <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
+                    <input type="text"
+                           class="form-control"
+                           id="serverName"
+                           placeholder="my-server"
+                           @bind="ViewModel.ServerName"
+                           @bind:event="oninput"
+                           disabled="@(ViewModel.IsEditMode || IsTesting)" />
+                    @if (!ViewModel.IsEditMode)
+                    {
+                        <div class="form-text">A unique identifier for this server (no spaces)</div>
+                    }
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Configuration (JSON)</label>
+                    <textarea class="form-control font-monospace"
+                              rows="15"
+                              value="@_jsonInputValue"
+                              @oninput="OnJsonInputChanged"
+                              disabled="@IsTesting"
+                              placeholder='{"command": "npx", "args": [], "env": {}}'></textarea>
+                    @if (!string.IsNullOrEmpty(_jsonParseError))
+                    {
+                        <div class="text-danger small mt-1">@_jsonParseError</div>
+                    }
+                    <div class="form-text">JSON with command, args (array), and env (object)</div>
+                    <div class="small text-muted mt-1">Valid command: @HasValidCommand()</div>
+                </div>
+            }
+            else
+            {
             <div class="mb-3">
                 <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
                 <input type="text"
@@ -54,6 +99,7 @@
                                   Value="@GetEnvironmentVariablesValue()"
                                   OnValueChanged="OnEnvironmentVariablesChanged" />
             </div>
+            }
 
             @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
             {
@@ -114,9 +160,57 @@
 </ModalDialog>
 
 @code {
+    private bool _isJsonMode = false;
+    private string _jsonInputValue = "{}";
+    private string? _jsonParseError = null;
+
     private bool IsTesting => ViewModel.TestState == ConnectionTestState.Testing;
-    private bool CanTest => !string.IsNullOrWhiteSpace(ViewModel.Command) && !IsTesting;
+    private bool CanTest => !IsTesting && HasValidCommand();
     private bool CanSave => ViewModel.TestState == ConnectionTestState.Success;
+
+    private void OnJsonInputChanged(ChangeEventArgs e)
+    {
+        _jsonInputValue = e.Value?.ToString() ?? "{}";
+        // Clear any previous parse error when user is typing
+        _jsonParseError = null;
+        // Force re-render to update CanTest
+        StateHasChanged();
+    }
+
+    private bool HasValidCommand()
+    {
+        if (_isJsonMode)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_jsonInputValue)) return false;
+                var parsed = JsonSerializer.Deserialize<JsonElement>(_jsonInputValue);
+
+                // Try direct format: {"command": "..."}
+                if (parsed.TryGetProperty("command", out var cmd))
+                {
+                    return !string.IsNullOrWhiteSpace(cmd.GetString());
+                }
+
+                // Try wrapped format: {"serverName": {"command": "..."}}
+                foreach (var prop in parsed.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Object &&
+                        prop.Value.TryGetProperty("command", out var nestedCmd))
+                    {
+                        return !string.IsNullOrWhiteSpace(nestedCmd.GetString());
+                    }
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return !string.IsNullOrWhiteSpace(ViewModel.Command);
+    }
 
     private static readonly ToolInputParameter ArgumentsParameter = new(
         Name: "args",
@@ -167,13 +261,126 @@
         }
     }
 
+    private void ToggleInputMode()
+    {
+        if (_isJsonMode)
+        {
+            SyncJsonToForm();
+        }
+        else
+        {
+            SyncFormToJson();
+        }
+        _isJsonMode = !_isJsonMode;
+    }
+
+    private void SyncFormToJson()
+    {
+        try
+        {
+            var config = new Dictionary<string, object?>
+            {
+                ["command"] = ViewModel.Command,
+                ["args"] = ViewModel.Arguments,
+                ["env"] = ViewModel.EnvironmentVariables
+            };
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            _jsonInputValue = JsonSerializer.Serialize(config, options);
+            _jsonParseError = null;
+        }
+        catch (Exception ex)
+        {
+            _jsonParseError = $"Error serializing: {ex.Message}";
+        }
+    }
+
+    private void SyncJsonToForm()
+    {
+        try
+        {
+            // Reset all fields first
+            ViewModel.Command = string.Empty;
+            ViewModel.Arguments = new List<string>();
+            ViewModel.EnvironmentVariables = new Dictionary<string, string>();
+
+            if (string.IsNullOrWhiteSpace(_jsonInputValue))
+            {
+                _jsonParseError = null;
+                return;
+            }
+
+            var parsed = JsonSerializer.Deserialize<JsonElement>(_jsonInputValue);
+            JsonElement config = parsed;
+
+            // Check if this is wrapped format: {"serverName": {"command": "..."}}
+            if (!parsed.TryGetProperty("command", out _))
+            {
+                foreach (var prop in parsed.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Object &&
+                        prop.Value.TryGetProperty("command", out _))
+                    {
+                        // Found wrapped format - use the nested object as config
+                        config = prop.Value;
+                        // Also set server name if not already set
+                        if (string.IsNullOrWhiteSpace(ViewModel.ServerName))
+                        {
+                            ViewModel.ServerName = prop.Name;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (config.TryGetProperty("command", out var commandElement))
+            {
+                ViewModel.Command = commandElement.GetString() ?? string.Empty;
+            }
+
+            if (config.TryGetProperty("args", out var argsElement) && argsElement.ValueKind == JsonValueKind.Array)
+            {
+                ViewModel.Arguments = argsElement.EnumerateArray()
+                    .Select(e => e.GetString() ?? string.Empty)
+                    .ToList();
+            }
+
+            if (config.TryGetProperty("env", out var envElement) && envElement.ValueKind == JsonValueKind.Object)
+            {
+                ViewModel.EnvironmentVariables = envElement.EnumerateObject()
+                    .ToDictionary(p => p.Name, p => p.Value.GetString() ?? string.Empty);
+            }
+
+            _jsonParseError = null;
+        }
+        catch (JsonException ex)
+        {
+            _jsonParseError = $"Invalid JSON: {ex.Message}";
+        }
+    }
+
     private async Task TestConfiguration()
     {
+        if (_isJsonMode)
+        {
+            SyncJsonToForm();
+            if (!string.IsNullOrEmpty(_jsonParseError))
+            {
+                return;
+            }
+        }
         await ViewModel.TestConfigurationCommand.ExecuteAsync(null);
     }
 
     private async Task Save()
     {
+        if (_isJsonMode)
+        {
+            SyncJsonToForm();
+            if (!string.IsNullOrEmpty(_jsonParseError))
+            {
+                return;
+            }
+        }
         await ViewModel.SaveCommand.ExecuteAsync(null);
     }
 

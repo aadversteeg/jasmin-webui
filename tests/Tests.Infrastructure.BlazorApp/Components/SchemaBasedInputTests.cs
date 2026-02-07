@@ -110,12 +110,12 @@ public class SchemaBasedInputTests : TestContext
             .Add(x => x.Parameter, parameter)
             .Add(x => x.Value, items));
 
-        // Assert
-        var arrayItems = cut.FindAll(".array-item");
+        // Assert - primitive arrays use .primitive-array-item class
+        var arrayItems = cut.FindAll(".primitive-array-item");
         arrayItems.Should().HaveCount(3);
 
         // Each item should have a remove button
-        var removeButtons = cut.FindAll(".array-item button");
+        var removeButtons = cut.FindAll(".primitive-array-item button");
         removeButtons.Should().HaveCount(3);
     }
 
@@ -155,8 +155,8 @@ public class SchemaBasedInputTests : TestContext
             .Add(x => x.Value, items)
             .Add(x => x.OnValueChanged, EventCallback.Factory.Create<object?>(this, v => changedValue = v)));
 
-        // Act - click first remove button
-        cut.FindAll(".array-item button")[0].Click();
+        // Act - click first remove button (primitive arrays use .primitive-array-item)
+        cut.FindAll(".primitive-array-item button")[0].Click();
 
         // Assert
         changedValue.Should().NotBeNull();
