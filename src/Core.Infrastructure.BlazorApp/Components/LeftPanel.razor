@@ -1,4 +1,5 @@
 @inherits MvvmComponentBase<LeftPanelViewModel>
+@using Core.Application.McpServers
 @inject McpServerListViewModel ServerListVM
 @inject NavigationManager NavigationManager
 @inject ConfirmationDialogViewModel ConfirmDialogVM
@@ -9,26 +10,50 @@
             Width="@ViewModel.PanelWidth"
             WidthChanged="@OnWidthChanged">
     <Header>
-        <div class="d-flex align-items-center justify-content-between w-100">
-            <h5 class="mb-0">MCP Servers</h5>
-            <button class="btn btn-sm btn-outline-primary"
-                    @onclick="HandleAddServer"
-                    title="Add MCP Server">
-                + Add
-            </button>
-        </div>
+        <h5 class="mb-0">MCP Servers</h5>
     </Header>
     <ChildContent>
         <div class="mcp-server-list">
-            @if (!ServerListVM.Servers.Any())
+            <div class="server-toolbar d-flex gap-2 p-2">
+                <div class="position-relative flex-grow-1">
+                    <input type="text"
+                           class="form-control form-control-sm pe-4"
+                           placeholder="Filter servers..."
+                           @bind="_filterText"
+                           @bind:event="oninput" />
+                    @if (!string.IsNullOrEmpty(_filterText))
+                    {
+                        <button type="button"
+                                class="btn btn-sm position-absolute top-50 end-0 translate-middle-y border-0 p-0 pe-2"
+                                style="background: transparent; line-height: 1;"
+                                @onclick="ClearFilter"
+                                title="Clear filter">
+                            <span class="text-muted">&times;</span>
+                        </button>
+                    }
+                </div>
+                <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                        @onclick="HandleAddServer"
+                        title="Add MCP Server">
+                    + Add
+                </button>
+            </div>
+            @if (!FilteredServers.Any())
             {
                 <div class="empty-state text-muted text-center py-3">
-                    No MCP servers
+                    @if (string.IsNullOrWhiteSpace(_filterText))
+                    {
+                        <span>No MCP servers</span>
+                    }
+                    else
+                    {
+                        <span>No servers matching "@_filterText"</span>
+                    }
                 </div>
             }
             else
             {
-                @foreach (var server in ServerListVM.Servers)
+                @foreach (var server in FilteredServers)
                 {
                     <McpServerListItemView Server="server"
                                           IsSelected="IsServerSelected(server.Name)"
@@ -45,6 +70,11 @@
 
 @code {
     private bool _isDisposed;
+    private string _filterText = string.Empty;
+
+    private IEnumerable<McpServerListItem> FilteredServers => string.IsNullOrWhiteSpace(_filterText)
+        ? ServerListVM.Servers
+        : ServerListVM.Servers.Where(s => s.Name.Contains(_filterText, StringComparison.OrdinalIgnoreCase));
 
     protected override void OnInitialized()
     {
@@ -101,6 +131,11 @@
     private void HandleAddServer()
     {
         McpServerDialogVM.OpenForAddCommand.Execute(null);
+    }
+
+    private void ClearFilter()
+    {
+        _filterText = string.Empty;
     }
 
     private async Task HandleEditRequest(string serverName)
