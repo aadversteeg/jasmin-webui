@@ -10,4 +10,6 @@ public record CreateRequestDto(
     string Action,
     string? InstanceId = null,
     string? ToolName = null,
-    JsonElement? Input = null);
+    JsonElement? Input = null,
+    string? PromptName = null,
+    JsonElement? Arguments = null);

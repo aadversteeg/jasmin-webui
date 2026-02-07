@@ -6,6 +6,7 @@
 @inject SidePanelViewModel SidePanelVM
 @inject LeftPanelViewModel LeftPanelVM
 @inject ToolInvocationViewModel ToolInvocationVM
+@inject PromptInvocationViewModel PromptInvocationVM
 
 <PageTitle>@ServerName - Jasmin</PageTitle>
 
@@ -67,7 +68,7 @@
                     <ToolsTab ToolsResult="@ViewModel.ToolsResult" OnInvokeTool="HandleInvokeTool" />
                     break;
                 case "prompts":
-                    <PromptsTab PromptsResult="@ViewModel.PromptsResult" />
+                    <PromptsTab PromptsResult="@ViewModel.PromptsResult" OnInvokePrompt="HandleInvokePrompt" />
                     break;
                 case "resources":
                     <ResourcesTab ResourcesResult="@ViewModel.ResourcesResult" />
@@ -81,6 +82,7 @@
 </div>
 
 <ToolInvocationDialog />
+<PromptInvocationDialog />
 
 @code {
     [Parameter]
@@ -113,5 +115,11 @@
     {
         var tools = ViewModel.ToolsResult?.Items ?? Array.Empty<McpServerTool>();
         await ToolInvocationVM.OpenAsync(tool, ServerName, ViewModel.ServerUrl, tools);
+    }
+
+    private async Task HandleInvokePrompt(McpServerPrompt prompt)
+    {
+        var prompts = ViewModel.PromptsResult?.Items ?? Array.Empty<McpServerPrompt>();
+        await PromptInvocationVM.OpenAsync(prompt, ServerName, ViewModel.ServerUrl, prompts);
     }
 }

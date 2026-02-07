@@ -1,0 +1,43 @@
+@using Core.Application.McpServers
+
+<div class="mb-3">
+    <label class="form-label" title="@Argument.Description">
+        <code>@Argument.Name</code>
+        @if (Argument.Required)
+        {
+            <span class="text-danger">*</span>
+        }
+    </label>
+
+    @if (!string.IsNullOrEmpty(Argument.Description))
+    {
+        <div class="form-text mb-1">@Argument.Description</div>
+    }
+
+    <input type="text"
+           class="form-control"
+           value="@Value"
+           @onchange="HandleChange"
+           placeholder="@(Argument.Required ? "Required" : "Optional")" />
+</div>
+
+@code {
+    [Parameter]
+    public McpServerPromptArgument Argument { get; set; } = null!;
+
+    [Parameter]
+    public string? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> OnValueChanged { get; set; }
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString();
+        if (string.IsNullOrEmpty(newValue))
+        {
+            newValue = null;
+        }
+        await OnValueChanged.InvokeAsync(newValue);
+    }
+}

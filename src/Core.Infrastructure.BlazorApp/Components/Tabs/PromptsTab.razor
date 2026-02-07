@@ -31,6 +31,14 @@
                     Description="@prompt.Description"
                     IsExpanded="@_viewModel.IsExpanded(prompt.Name)"
                     OnToggle="() => ToggleExpand(prompt.Name)">
+                    <HeaderActions>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => HandleInvoke(prompt)"
+                                @onclick:stopPropagation="true">
+                            Invoke
+                        </button>
+                    </HeaderActions>
+                    <ChildContent>
                     @if (prompt.Arguments.Count > 0)
                     {
                         <table class="table table-sm table-bordered mb-0">
@@ -61,6 +69,7 @@
                     {
                         <p class="text-muted small mb-0">No arguments</p>
                     }
+                    </ChildContent>
                 </ExpandableItemCard>
             }
         </div>
@@ -84,6 +93,9 @@
     [Parameter]
     public McpServerMetadataResult<McpServerPrompt>? PromptsResult { get; set; }
 
+    [Parameter]
+    public EventCallback<McpServerPrompt> OnInvokePrompt { get; set; }
+
     private readonly ExpandableItemsViewModel _viewModel = new();
 
     protected override void OnInitialized()
@@ -94,6 +106,11 @@
     private void ToggleExpand(string promptName)
     {
         _viewModel.ToggleExpand(promptName);
+    }
+
+    private async Task HandleInvoke(McpServerPrompt prompt)
+    {
+        await OnInvokePrompt.InvokeAsync(prompt);
     }
 
     private void ExpandAll()

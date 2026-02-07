@@ -27,5 +27,6 @@ builder.Services.AddScoped<McpServerListViewModel>();
 builder.Services.AddScoped<ServerDetailViewModel>();
 builder.Services.AddScoped<ConfirmationDialogViewModel>();
 builder.Services.AddScoped<ToolInvocationViewModel>();
+builder.Services.AddScoped<PromptInvocationViewModel>();
 
 await builder.Build().RunAsync();

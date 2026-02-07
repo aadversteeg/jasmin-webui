@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IApplicationStateService, ApplicationStateService>();
         services.AddScoped<IToolHistoryService, ToolHistoryService>();
+        services.AddScoped<IPromptHistoryService, PromptHistoryService>();
         return services;
     }
 }
