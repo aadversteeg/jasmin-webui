@@ -13,6 +13,8 @@ public partial class McpServerDialogViewModel : ViewModelBase
 {
     private readonly IMcpServerConfigService _configService;
     private readonly IApplicationStateService _appState;
+    private readonly IToolInvocationService _invocationService;
+    private readonly IUserPreferencesService _preferences;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -44,6 +46,12 @@ public partial class McpServerDialogViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isLoading;
 
+    [ObservableProperty]
+    private bool _autoRefreshMetadataOnAdd;
+
+    [ObservableProperty]
+    private bool _isRefreshingMetadata;
+
     private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
@@ -53,10 +61,14 @@ public partial class McpServerDialogViewModel : ViewModelBase
 
     public McpServerDialogViewModel(
         IMcpServerConfigService configService,
-        IApplicationStateService appState)
+        IApplicationStateService appState,
+        IToolInvocationService invocationService,
+        IUserPreferencesService preferences)
     {
         _configService = configService;
         _appState = appState;
+        _invocationService = invocationService;
+        _preferences = preferences;
     }
 
     /// <summary>
@@ -77,6 +89,7 @@ public partial class McpServerDialogViewModel : ViewModelBase
     {
         ResetForm();
         IsEditMode = false;
+        AutoRefreshMetadataOnAdd = _preferences.AutoRefreshMetadataOnAdd;
         IsOpen = true;
     }
 
@@ -241,11 +254,48 @@ public partial class McpServerDialogViewModel : ViewModelBase
             return;
         }
 
+        // Save the auto-refresh preference
+        _preferences.AutoRefreshMetadataOnAdd = AutoRefreshMetadataOnAdd;
+
+        // Trigger auto-refresh for new servers if enabled
+        if (!IsEditMode && AutoRefreshMetadataOnAdd)
+        {
+            await RefreshMetadataForServerAsync(serverUrl, ServerName);
+        }
+
         IsOpen = false;
         ServerSaved?.Invoke(ServerName);
     }
 
     private bool CanSave() => TestState == ConnectionTestState.Success;
+
+    private async Task RefreshMetadataForServerAsync(string serverUrl, string serverName)
+    {
+        IsRefreshingMetadata = true;
+
+        try
+        {
+            // Start a temporary instance
+            var startResult = await _invocationService.StartInstanceAsync(serverUrl, serverName);
+            if (!startResult.IsSuccess)
+            {
+                // Failed to start instance - don't block the save
+                return;
+            }
+
+            var instanceId = startResult.Value!;
+
+            // Refresh metadata
+            await _invocationService.RefreshMetadataAsync(serverUrl, serverName, instanceId);
+
+            // Stop the temporary instance
+            await _invocationService.StopInstanceAsync(serverUrl, serverName, instanceId);
+        }
+        finally
+        {
+            IsRefreshingMetadata = false;
+        }
+    }
 
     partial void OnTestStateChanged(ConnectionTestState value)
     {

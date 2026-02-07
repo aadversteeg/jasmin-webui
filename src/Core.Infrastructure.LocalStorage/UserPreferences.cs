@@ -33,4 +33,7 @@ public record UserPreferences
 
     // Key: serverName, Value: selected instance ID (when mode is ExistingInstance)
     public Dictionary<string, string> ServerSelectedInstanceId { get; init; } = new();
+
+    // MCP Server dialog preferences
+    public bool AutoRefreshMetadataOnAdd { get; init; } = true;
 }

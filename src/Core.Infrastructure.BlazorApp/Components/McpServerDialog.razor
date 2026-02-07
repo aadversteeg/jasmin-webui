@@ -100,6 +100,21 @@
             </div>
             }
 
+            @if (!ViewModel.IsEditMode)
+            {
+                <div class="form-check mb-3">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           id="autoRefreshMetadata"
+                           @bind="ViewModel.AutoRefreshMetadataOnAdd"
+                           disabled="@IsTesting" />
+                    <label class="form-check-label" for="autoRefreshMetadata">
+                        Refresh metadata after adding
+                    </label>
+                    <div class="form-text">Automatically fetch tools, prompts, and resources</div>
+                </div>
+            }
+
             @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
             {
                 <div class="alert alert-danger py-2 mb-3">
@@ -152,8 +167,16 @@
         <button type="button"
                 class="btn btn-primary"
                 @onclick="Save"
-                disabled="@(!CanSave)">
-            Save
+                disabled="@(!CanSave || ViewModel.IsRefreshingMetadata)">
+            @if (ViewModel.IsRefreshingMetadata)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span>Refreshing...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
         </button>
     </FooterContent>
 </ModalDialog>

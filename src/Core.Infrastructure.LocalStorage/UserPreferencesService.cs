@@ -110,6 +110,13 @@ public class UserPreferencesService : IUserPreferencesService
         set => UpdatePreference(p => p with { ShowConfigAsJson = value });
     }
 
+    // MCP Server dialog preferences
+    public bool AutoRefreshMetadataOnAdd
+    {
+        get => _preferences.AutoRefreshMetadataOnAdd;
+        set => UpdatePreference(p => p with { AutoRefreshMetadataOnAdd = value });
+    }
+
     // Tool invocation dialog
     public int ToolInvocationInputPanelWidthPercent
     {

@@ -41,6 +41,9 @@ public interface IUserPreferencesService
     // Configuration view
     bool ShowConfigAsJson { get; set; }
 
+    // MCP Server dialog preferences
+    bool AutoRefreshMetadataOnAdd { get; set; }
+
     // Tool invocation dialog
     int ToolInvocationInputPanelWidthPercent { get; set; }
     int ToolInvocationHistoryMaxItems { get; set; }
