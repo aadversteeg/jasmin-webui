@@ -1,0 +1,15 @@
+.instance-selector {
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1rem;
+}
+
+.instance-selector .form-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.instance-selector .form-text {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+}

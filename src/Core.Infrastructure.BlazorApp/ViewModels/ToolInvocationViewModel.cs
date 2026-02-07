@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,9 +23,20 @@ public partial class ToolInvocationViewModel : ViewModelBase
 {
     private readonly IToolInvocationService _invocationService;
     private readonly IToolHistoryService _historyService;
+    private readonly IUserPreferencesService _preferences;
+    private readonly IApplicationStateService _appState;
+
+    // Track whether we started the current instance (vs. reusing existing)
+    private bool _instanceStartedByUs;
 
     [ObservableProperty]
     private bool _isOpen;
+
+    [ObservableProperty]
+    private InstanceLifecycleMode _lifecycleMode = InstanceLifecycleMode.PerDialog;
+
+    [ObservableProperty]
+    private string? _selectedExistingInstanceId;
 
     [ObservableProperty]
     private InvocationView _currentView = InvocationView.Input;
@@ -73,6 +85,11 @@ public partial class ToolInvocationViewModel : ViewModelBase
     /// Gets the available tools for navigation.
     /// </summary>
     public IReadOnlyList<McpServerTool> AvailableTools => _availableTools;
+
+    /// <summary>
+    /// Gets the running instances available for reuse.
+    /// </summary>
+    public ObservableCollection<McpServerInstance> RunningInstances { get; } = new();
 
     /// <summary>
     /// Gets the current tool index in the available tools list.
@@ -143,10 +160,16 @@ public partial class ToolInvocationViewModel : ViewModelBase
         }
     }
 
-    public ToolInvocationViewModel(IToolInvocationService invocationService, IToolHistoryService historyService)
+    public ToolInvocationViewModel(
+        IToolInvocationService invocationService,
+        IToolHistoryService historyService,
+        IUserPreferencesService preferences,
+        IApplicationStateService appState)
     {
         _invocationService = invocationService;
         _historyService = historyService;
+        _preferences = preferences;
+        _appState = appState;
     }
 
     /// <summary>
@@ -169,6 +192,12 @@ public partial class ToolInvocationViewModel : ViewModelBase
             await _historyService.LoadAsync();
         }
 
+        // Load preferences if not loaded
+        if (!_preferences.IsLoaded)
+        {
+            await _preferences.LoadAsync();
+        }
+
         // Reset state
         ServerName = serverName;
         ServerUrl = serverUrl;
@@ -180,6 +209,7 @@ public partial class ToolInvocationViewModel : ViewModelBase
         ErrorMessage = null;
         Result = null;
         InstanceId = null;
+        _instanceStartedByUs = false;
 
         // Set tool and load draft
         await SwitchToToolAsync(tool);
@@ -187,11 +217,56 @@ public partial class ToolInvocationViewModel : ViewModelBase
         IsOpen = true;
         _cancellationTokenSource = new CancellationTokenSource();
 
-        // Start instance in background
-        await StartInstanceAsync();
+        // Load running instances for selector
+        await LoadRunningInstancesAsync();
+
+        // Load saved preferences
+        LifecycleMode = _preferences.GetInstanceLifecycleMode(ServerName);
+        SelectedExistingInstanceId = _preferences.GetSelectedInstanceId(ServerName);
+
+        // Validate selected instance still exists
+        if (LifecycleMode == InstanceLifecycleMode.ExistingInstance)
+        {
+            if (string.IsNullOrEmpty(SelectedExistingInstanceId) ||
+                !RunningInstances.Any(i => i.InstanceId == SelectedExistingInstanceId))
+            {
+                // Instance no longer exists, fall back to default
+                LifecycleMode = InstanceLifecycleMode.PerDialog;
+                SelectedExistingInstanceId = null;
+                _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+                _preferences.SetSelectedInstanceId(ServerName, null);
+            }
+        }
+
+        // DON'T start instance here - wait for invoke
 
         // Notify navigation state changed
         NotifyNavigationChanged();
+    }
+
+    private async Task LoadRunningInstancesAsync()
+    {
+        RunningInstances.Clear();
+
+        try
+        {
+            var result = await _invocationService.GetInstancesAsync(
+                ServerUrl,
+                ServerName,
+                _cancellationTokenSource?.Token ?? CancellationToken.None);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                foreach (var instance in result.Value)
+                {
+                    RunningInstances.Add(instance);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors when loading instances
+        }
     }
 
     private async Task SwitchToToolAsync(McpServerTool tool)
@@ -300,7 +375,7 @@ public partial class ToolInvocationViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanInvoke))]
     private async Task InvokeAsync()
     {
-        if (Tool == null || string.IsNullOrEmpty(InstanceId))
+        if (Tool == null)
         {
             return;
         }
@@ -311,6 +386,29 @@ public partial class ToolInvocationViewModel : ViewModelBase
 
         try
         {
+            // Start or select instance if needed
+            if (string.IsNullOrEmpty(InstanceId))
+            {
+                if (LifecycleMode == InstanceLifecycleMode.ExistingInstance &&
+                    !string.IsNullOrEmpty(SelectedExistingInstanceId))
+                {
+                    // Try to reuse existing instance
+                    InstanceId = SelectedExistingInstanceId;
+                    _instanceStartedByUs = false;
+                }
+                else
+                {
+                    // Start a new instance
+                    await StartInstanceAsync();
+                    if (string.IsNullOrEmpty(InstanceId))
+                    {
+                        IsInvoking = false;
+                        return; // Failed to start
+                    }
+                    _instanceStartedByUs = true;
+                }
+            }
+
             // Build input from InputValues, filtering out null/empty values for optional params
             var input = new Dictionary<string, object?>();
             if (Tool.InputSchema?.Parameters != null)
@@ -339,6 +437,26 @@ public partial class ToolInvocationViewModel : ViewModelBase
                 input.Count > 0 ? input : null,
                 _cancellationTokenSource?.Token ?? CancellationToken.None);
 
+            // If invocation failed and we were using an existing instance, try starting a new one
+            if (!result.IsSuccess && !_instanceStartedByUs)
+            {
+                // Clear the invalid instance and start a new one
+                InstanceId = null;
+                await StartInstanceAsync();
+                if (!string.IsNullOrEmpty(InstanceId))
+                {
+                    _instanceStartedByUs = true;
+                    // Retry invocation with the new instance
+                    result = await _invocationService.InvokeToolAsync(
+                        ServerUrl,
+                        ServerName,
+                        InstanceId,
+                        Tool.Name,
+                        input.Count > 0 ? input : null,
+                        _cancellationTokenSource?.Token ?? CancellationToken.None);
+                }
+            }
+
             if (result.IsSuccess)
             {
                 Result = result.Value;
@@ -357,6 +475,12 @@ public partial class ToolInvocationViewModel : ViewModelBase
             {
                 ErrorMessage = result.Error;
             }
+
+            // Stop instance if PerInvocation mode and we started it
+            if (LifecycleMode == InstanceLifecycleMode.PerInvocation && _instanceStartedByUs)
+            {
+                await StopCurrentInstanceAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -372,7 +496,30 @@ public partial class ToolInvocationViewModel : ViewModelBase
         }
     }
 
-    private bool CanInvoke() => !IsStartingInstance && !IsInvoking && !string.IsNullOrEmpty(InstanceId);
+    private async Task StopCurrentInstanceAsync()
+    {
+        if (string.IsNullOrEmpty(InstanceId))
+            return;
+
+        try
+        {
+            await _invocationService.StopInstanceAsync(
+                ServerUrl,
+                ServerName,
+                InstanceId);
+        }
+        catch
+        {
+            // Ignore errors when stopping
+        }
+        finally
+        {
+            InstanceId = null;
+            _instanceStartedByUs = false;
+        }
+    }
+
+    private bool CanInvoke() => !IsStartingInstance && !IsInvoking;
 
     partial void OnIsStartingInstanceChanged(bool value)
     {
@@ -380,11 +527,6 @@ public partial class ToolInvocationViewModel : ViewModelBase
     }
 
     partial void OnIsInvokingChanged(bool value)
-    {
-        InvokeCommand.NotifyCanExecuteChanged();
-    }
-
-    partial void OnInstanceIdChanged(string? value)
     {
         InvokeCommand.NotifyCanExecuteChanged();
     }
@@ -613,26 +755,57 @@ public partial class ToolInvocationViewModel : ViewModelBase
             await _historyService.SaveDraftAsync(ServerName, Tool.Name, InputValues);
         }
 
+        // Save lifecycle preferences
+        _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+        if (LifecycleMode == InstanceLifecycleMode.ExistingInstance)
+        {
+            _preferences.SetSelectedInstanceId(ServerName, SelectedExistingInstanceId);
+        }
+
         _cancellationTokenSource?.Cancel();
 
-        // Stop instance if running
-        if (!string.IsNullOrEmpty(InstanceId))
+        // Only stop instance if PerDialog mode and we started it
+        if (LifecycleMode == InstanceLifecycleMode.PerDialog &&
+            _instanceStartedByUs &&
+            !string.IsNullOrEmpty(InstanceId))
         {
-            try
-            {
-                await _invocationService.StopInstanceAsync(
-                    ServerUrl,
-                    ServerName,
-                    InstanceId);
-            }
-            catch
-            {
-                // Ignore errors when stopping
-            }
+            await StopCurrentInstanceAsync();
         }
+
+        // For Persistent and ExistingInstance modes, don't stop the instance
 
         IsOpen = false;
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = null;
+    }
+
+    /// <summary>
+    /// Sets the lifecycle mode and saves preference.
+    /// </summary>
+    public void SetLifecycleMode(InstanceLifecycleMode mode)
+    {
+        LifecycleMode = mode;
+        _preferences.SetInstanceLifecycleMode(ServerName, mode);
+
+        // Clear instance if switching away from ExistingInstance mode
+        if (mode != InstanceLifecycleMode.ExistingInstance)
+        {
+            SelectedExistingInstanceId = null;
+            _preferences.SetSelectedInstanceId(ServerName, null);
+        }
+    }
+
+    /// <summary>
+    /// Sets the selected existing instance and saves preference.
+    /// </summary>
+    public void SetSelectedExistingInstanceId(string? instanceId)
+    {
+        SelectedExistingInstanceId = instanceId;
+        if (instanceId != null)
+        {
+            LifecycleMode = InstanceLifecycleMode.ExistingInstance;
+            _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+        }
+        _preferences.SetSelectedInstanceId(ServerName, instanceId);
     }
 }

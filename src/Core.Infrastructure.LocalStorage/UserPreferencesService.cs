@@ -1,3 +1,4 @@
+using Core.Application.McpServers;
 using Core.Application.Storage;
 
 namespace Core.Infrastructure.LocalStorage;
@@ -120,6 +121,46 @@ public class UserPreferencesService : IUserPreferencesService
     {
         get => _preferences.ToolInvocationHistoryMaxItems;
         set => UpdatePreference(p => p with { ToolInvocationHistoryMaxItems = Math.Clamp(value, 1, 100) });
+    }
+
+    // Instance lifecycle preferences (per server)
+
+    public InstanceLifecycleMode GetInstanceLifecycleMode(string serverName)
+    {
+        if (_preferences.ServerInstanceLifecycleMode.TryGetValue(serverName, out var mode))
+        {
+            return (InstanceLifecycleMode)mode;
+        }
+        return InstanceLifecycleMode.PerDialog; // Default
+    }
+
+    public void SetInstanceLifecycleMode(string serverName, InstanceLifecycleMode mode)
+    {
+        var dict = new Dictionary<string, int>(_preferences.ServerInstanceLifecycleMode)
+        {
+            [serverName] = (int)mode
+        };
+        UpdatePreference(p => p with { ServerInstanceLifecycleMode = dict });
+    }
+
+    public string? GetSelectedInstanceId(string serverName)
+    {
+        _preferences.ServerSelectedInstanceId.TryGetValue(serverName, out var instanceId);
+        return instanceId;
+    }
+
+    public void SetSelectedInstanceId(string serverName, string? instanceId)
+    {
+        var dict = new Dictionary<string, string>(_preferences.ServerSelectedInstanceId);
+        if (instanceId != null)
+        {
+            dict[serverName] = instanceId;
+        }
+        else
+        {
+            dict.Remove(serverName);
+        }
+        UpdatePreference(p => p with { ServerSelectedInstanceId = dict });
     }
 
     private void UpdatePreference(Func<UserPreferences, UserPreferences> update)

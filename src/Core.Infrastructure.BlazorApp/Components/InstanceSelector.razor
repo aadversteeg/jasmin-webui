@@ -1,0 +1,114 @@
+@using Core.Application.McpServers
+
+<div class="instance-selector mb-3">
+    <label class="form-label">Instance</label>
+    <select class="form-select form-select-sm"
+            value="@GetSelectValue()"
+            @onchange="OnSelectionChanged"
+            disabled="@Disabled">
+        <optgroup label="Start new instance">
+            <option value="per-invoke">Start new (per invoke)</option>
+            <option value="per-dialog">Start new (per dialog)</option>
+            <option value="persistent">Start new (persistent)</option>
+        </optgroup>
+        @if (RunningInstances.Count > 0)
+        {
+            <optgroup label="Use existing instance">
+                @foreach (var instance in RunningInstances)
+                {
+                    <option value="@($"instance:{instance.InstanceId}")">
+                        @instance.InstanceId (@FormatStartedAt(instance.StartedAt))
+                    </option>
+                }
+            </optgroup>
+        }
+    </select>
+    <div class="form-text">
+        @GetModeDescription()
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string ServerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ServerUrl { get; set; }
+
+    [Parameter]
+    public InstanceLifecycleMode Mode { get; set; } = InstanceLifecycleMode.PerDialog;
+
+    [Parameter]
+    public EventCallback<InstanceLifecycleMode> ModeChanged { get; set; }
+
+    [Parameter]
+    public string? SelectedInstanceId { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedInstanceIdChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<McpServerInstance> RunningInstances { get; set; } = Array.Empty<McpServerInstance>();
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string GetSelectValue()
+    {
+        return Mode switch
+        {
+            InstanceLifecycleMode.PerInvocation => "per-invoke",
+            InstanceLifecycleMode.PerDialog => "per-dialog",
+            InstanceLifecycleMode.Persistent => "persistent",
+            InstanceLifecycleMode.ExistingInstance when !string.IsNullOrEmpty(SelectedInstanceId)
+                => $"instance:{SelectedInstanceId}",
+            _ => "per-dialog"
+        };
+    }
+
+    private async Task OnSelectionChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString() ?? "per-dialog";
+
+        if (value.StartsWith("instance:"))
+        {
+            var instanceId = value["instance:".Length..];
+            await ModeChanged.InvokeAsync(InstanceLifecycleMode.ExistingInstance);
+            await SelectedInstanceIdChanged.InvokeAsync(instanceId);
+        }
+        else
+        {
+            var mode = value switch
+            {
+                "per-invoke" => InstanceLifecycleMode.PerInvocation,
+                "per-dialog" => InstanceLifecycleMode.PerDialog,
+                "persistent" => InstanceLifecycleMode.Persistent,
+                _ => InstanceLifecycleMode.PerDialog
+            };
+            await ModeChanged.InvokeAsync(mode);
+            await SelectedInstanceIdChanged.InvokeAsync(null);
+        }
+    }
+
+    private string FormatStartedAt(DateTimeOffset startedAt)
+    {
+        var local = startedAt.ToLocalTime();
+        return local.ToString("HH:mm:ss");
+    }
+
+    private string GetModeDescription()
+    {
+        return Mode switch
+        {
+            InstanceLifecycleMode.PerInvocation =>
+                "A new instance will be started for each invocation and stopped immediately after.",
+            InstanceLifecycleMode.PerDialog =>
+                "A new instance will be started when first needed and stopped when the dialog closes.",
+            InstanceLifecycleMode.Persistent =>
+                "A new instance will be started when first needed and kept running after the dialog closes.",
+            InstanceLifecycleMode.ExistingInstance =>
+                "Uses an existing running instance.",
+            _ => string.Empty
+        };
+    }
+}

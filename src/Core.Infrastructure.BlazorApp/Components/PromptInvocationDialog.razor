@@ -12,15 +12,6 @@
              Width="90vw"
              Height="90vh">
     <ChildContent>
-        @if (ViewModel.IsStartingInstance)
-        {
-            <div class="text-center py-4">
-                <div class="spinner-border text-secondary" role="status"></div>
-                <p class="mt-2 text-muted">Starting instance...</p>
-            </div>
-        }
-        else
-        {
             <div id="prompt-invocation-split-container" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
                 @* Left Panel - Input *@
                 <div class="split-panel input-panel" style="width: @(_inputPanelWidthPercent)%;">
@@ -72,15 +63,31 @@
                             <button class="btn btn-primary btn-sm"
                                     @onclick="HandleInvoke"
                                     disabled="@(!CanInvoke())">
-                                @if (ViewModel.IsInvoking)
+                                @if (ViewModel.IsStartingInstance)
                                 {
                                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Starting...</span>
                                 }
-                                Get Prompt
+                                else if (ViewModel.IsInvoking)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    <span>Getting...</span>
+                                }
+                                else
+                                {
+                                    <span>Get Prompt</span>
+                                }
                             </button>
                         </div>
                     </div>
                     <div class="panel-content">
+                        <InstanceSelector Mode="@ViewModel.LifecycleMode"
+                                         ModeChanged="@OnLifecycleModeChanged"
+                                         SelectedInstanceId="@ViewModel.SelectedExistingInstanceId"
+                                         SelectedInstanceIdChanged="@OnSelectedInstanceChanged"
+                                         RunningInstances="@ViewModel.RunningInstances"
+                                         Disabled="@(ViewModel.IsInvoking || ViewModel.IsStartingInstance)" />
+
                         @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
                         {
                             <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
@@ -191,7 +198,6 @@
                     </div>
                 </div>
             </div>
-        }
     </ChildContent>
 
     <FooterContent>
@@ -309,9 +315,17 @@
 
     private bool CanInvoke()
     {
-        return !ViewModel.IsStartingInstance
-            && !ViewModel.IsInvoking
-            && !string.IsNullOrEmpty(ViewModel.InstanceId);
+        return !ViewModel.IsStartingInstance && !ViewModel.IsInvoking;
+    }
+
+    private void OnLifecycleModeChanged(InstanceLifecycleMode mode)
+    {
+        ViewModel.SetLifecycleMode(mode);
+    }
+
+    private void OnSelectedInstanceChanged(string? instanceId)
+    {
+        ViewModel.SetSelectedExistingInstanceId(instanceId);
     }
 
     private async Task HandleSubmit()

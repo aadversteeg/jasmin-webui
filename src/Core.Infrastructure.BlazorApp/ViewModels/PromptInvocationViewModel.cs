@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,9 +14,20 @@ public partial class PromptInvocationViewModel : ViewModelBase
 {
     private readonly IPromptInvocationService _invocationService;
     private readonly IPromptHistoryService _historyService;
+    private readonly IUserPreferencesService _preferences;
+    private readonly IApplicationStateService _appState;
+
+    // Track whether we started the current instance (vs. reusing existing)
+    private bool _instanceStartedByUs;
 
     [ObservableProperty]
     private bool _isOpen;
+
+    [ObservableProperty]
+    private InstanceLifecycleMode _lifecycleMode = InstanceLifecycleMode.PerDialog;
+
+    [ObservableProperty]
+    private string? _selectedExistingInstanceId;
 
     [ObservableProperty]
     private InvocationView _currentView = InvocationView.Input;
@@ -64,6 +76,11 @@ public partial class PromptInvocationViewModel : ViewModelBase
     /// Gets the available prompts for navigation.
     /// </summary>
     public IReadOnlyList<McpServerPrompt> AvailablePrompts => _availablePrompts;
+
+    /// <summary>
+    /// Gets the running instances available for reuse.
+    /// </summary>
+    public ObservableCollection<McpServerInstance> RunningInstances { get; } = new();
 
     /// <summary>
     /// Gets the current prompt index in the available prompts list.
@@ -130,10 +147,16 @@ public partial class PromptInvocationViewModel : ViewModelBase
         }
     }
 
-    public PromptInvocationViewModel(IPromptInvocationService invocationService, IPromptHistoryService historyService)
+    public PromptInvocationViewModel(
+        IPromptInvocationService invocationService,
+        IPromptHistoryService historyService,
+        IUserPreferencesService preferences,
+        IApplicationStateService appState)
     {
         _invocationService = invocationService;
         _historyService = historyService;
+        _preferences = preferences;
+        _appState = appState;
     }
 
     /// <summary>
@@ -152,6 +175,12 @@ public partial class PromptInvocationViewModel : ViewModelBase
             await _historyService.LoadAsync();
         }
 
+        // Load preferences if not loaded
+        if (!_preferences.IsLoaded)
+        {
+            await _preferences.LoadAsync();
+        }
+
         // Reset state
         ServerName = serverName;
         ServerUrl = serverUrl;
@@ -163,6 +192,7 @@ public partial class PromptInvocationViewModel : ViewModelBase
         ErrorMessage = null;
         Result = null;
         InstanceId = null;
+        _instanceStartedByUs = false;
 
         // Set prompt and load draft
         await SwitchToPromptAsync(prompt);
@@ -170,11 +200,56 @@ public partial class PromptInvocationViewModel : ViewModelBase
         IsOpen = true;
         _cancellationTokenSource = new CancellationTokenSource();
 
-        // Start instance in background
-        await StartInstanceAsync();
+        // Load running instances for selector
+        await LoadRunningInstancesAsync();
+
+        // Load saved preferences
+        LifecycleMode = _preferences.GetInstanceLifecycleMode(ServerName);
+        SelectedExistingInstanceId = _preferences.GetSelectedInstanceId(ServerName);
+
+        // Validate selected instance still exists
+        if (LifecycleMode == InstanceLifecycleMode.ExistingInstance)
+        {
+            if (string.IsNullOrEmpty(SelectedExistingInstanceId) ||
+                !RunningInstances.Any(i => i.InstanceId == SelectedExistingInstanceId))
+            {
+                // Instance no longer exists, fall back to default
+                LifecycleMode = InstanceLifecycleMode.PerDialog;
+                SelectedExistingInstanceId = null;
+                _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+                _preferences.SetSelectedInstanceId(ServerName, null);
+            }
+        }
+
+        // DON'T start instance here - wait for invoke
 
         // Notify navigation state changed
         NotifyNavigationChanged();
+    }
+
+    private async Task LoadRunningInstancesAsync()
+    {
+        RunningInstances.Clear();
+
+        try
+        {
+            var result = await _invocationService.GetInstancesAsync(
+                ServerUrl,
+                ServerName,
+                _cancellationTokenSource?.Token ?? CancellationToken.None);
+
+            if (result.IsSuccess && result.Value != null)
+            {
+                foreach (var instance in result.Value)
+                {
+                    RunningInstances.Add(instance);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors when loading instances
+        }
     }
 
     private async Task SwitchToPromptAsync(McpServerPrompt prompt)
@@ -272,7 +347,7 @@ public partial class PromptInvocationViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanInvoke))]
     private async Task InvokeAsync()
     {
-        if (Prompt == null || string.IsNullOrEmpty(InstanceId))
+        if (Prompt == null)
         {
             return;
         }
@@ -283,6 +358,29 @@ public partial class PromptInvocationViewModel : ViewModelBase
 
         try
         {
+            // Start instance if needed
+            if (string.IsNullOrEmpty(InstanceId))
+            {
+                if (LifecycleMode == InstanceLifecycleMode.ExistingInstance &&
+                    !string.IsNullOrEmpty(SelectedExistingInstanceId))
+                {
+                    // Reuse existing instance
+                    InstanceId = SelectedExistingInstanceId;
+                    _instanceStartedByUs = false;
+                }
+                else
+                {
+                    // Start a new instance
+                    await StartInstanceAsync();
+                    if (string.IsNullOrEmpty(InstanceId))
+                    {
+                        IsInvoking = false;
+                        return; // Failed to start
+                    }
+                    _instanceStartedByUs = true;
+                }
+            }
+
             // Build arguments, filtering out null/empty values for optional args
             var arguments = new Dictionary<string, string?>();
             if (Prompt.Arguments != null)
@@ -310,6 +408,26 @@ public partial class PromptInvocationViewModel : ViewModelBase
                 arguments.Count > 0 ? arguments : null,
                 _cancellationTokenSource?.Token ?? CancellationToken.None);
 
+            // If invocation failed and we were using an existing instance, try starting a new one
+            if (!result.IsSuccess && !_instanceStartedByUs)
+            {
+                // Clear the invalid instance and start a new one
+                InstanceId = null;
+                await StartInstanceAsync();
+                if (!string.IsNullOrEmpty(InstanceId))
+                {
+                    _instanceStartedByUs = true;
+                    // Retry invocation with the new instance
+                    result = await _invocationService.GetPromptAsync(
+                        ServerUrl,
+                        ServerName,
+                        InstanceId,
+                        Prompt.Name,
+                        arguments.Count > 0 ? arguments : null,
+                        _cancellationTokenSource?.Token ?? CancellationToken.None);
+                }
+            }
+
             if (result.IsSuccess)
             {
                 Result = result.Value;
@@ -328,6 +446,12 @@ public partial class PromptInvocationViewModel : ViewModelBase
             {
                 ErrorMessage = result.Error;
             }
+
+            // Stop instance if PerInvocation mode and we started it
+            if (LifecycleMode == InstanceLifecycleMode.PerInvocation && _instanceStartedByUs)
+            {
+                await StopCurrentInstanceAsync();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -343,7 +467,30 @@ public partial class PromptInvocationViewModel : ViewModelBase
         }
     }
 
-    private bool CanInvoke() => !IsStartingInstance && !IsInvoking && !string.IsNullOrEmpty(InstanceId);
+    private async Task StopCurrentInstanceAsync()
+    {
+        if (string.IsNullOrEmpty(InstanceId))
+            return;
+
+        try
+        {
+            await _invocationService.StopInstanceAsync(
+                ServerUrl,
+                ServerName,
+                InstanceId);
+        }
+        catch
+        {
+            // Ignore errors when stopping
+        }
+        finally
+        {
+            InstanceId = null;
+            _instanceStartedByUs = false;
+        }
+    }
+
+    private bool CanInvoke() => !IsStartingInstance && !IsInvoking;
 
     partial void OnIsStartingInstanceChanged(bool value)
     {
@@ -351,11 +498,6 @@ public partial class PromptInvocationViewModel : ViewModelBase
     }
 
     partial void OnIsInvokingChanged(bool value)
-    {
-        InvokeCommand.NotifyCanExecuteChanged();
-    }
-
-    partial void OnInstanceIdChanged(string? value)
     {
         InvokeCommand.NotifyCanExecuteChanged();
     }
@@ -542,26 +684,57 @@ public partial class PromptInvocationViewModel : ViewModelBase
             await _historyService.SaveDraftAsync(ServerName, Prompt.Name, ArgumentValues);
         }
 
+        // Save lifecycle preferences
+        _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+        if (LifecycleMode == InstanceLifecycleMode.ExistingInstance)
+        {
+            _preferences.SetSelectedInstanceId(ServerName, SelectedExistingInstanceId);
+        }
+
         _cancellationTokenSource?.Cancel();
 
-        // Stop instance if running
-        if (!string.IsNullOrEmpty(InstanceId))
+        // Only stop instance if PerDialog mode and we started it
+        if (LifecycleMode == InstanceLifecycleMode.PerDialog &&
+            _instanceStartedByUs &&
+            !string.IsNullOrEmpty(InstanceId))
         {
-            try
-            {
-                await _invocationService.StopInstanceAsync(
-                    ServerUrl,
-                    ServerName,
-                    InstanceId);
-            }
-            catch
-            {
-                // Ignore errors when stopping
-            }
+            await StopCurrentInstanceAsync();
         }
+
+        // For Persistent and ExistingInstance modes, don't stop the instance
 
         IsOpen = false;
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = null;
+    }
+
+    /// <summary>
+    /// Sets the lifecycle mode and saves preference.
+    /// </summary>
+    public void SetLifecycleMode(InstanceLifecycleMode mode)
+    {
+        LifecycleMode = mode;
+        _preferences.SetInstanceLifecycleMode(ServerName, mode);
+
+        // Clear instance if switching away from ExistingInstance mode
+        if (mode != InstanceLifecycleMode.ExistingInstance)
+        {
+            SelectedExistingInstanceId = null;
+            _preferences.SetSelectedInstanceId(ServerName, null);
+        }
+    }
+
+    /// <summary>
+    /// Sets the selected existing instance and saves preference.
+    /// </summary>
+    public void SetSelectedExistingInstanceId(string? instanceId)
+    {
+        SelectedExistingInstanceId = instanceId;
+        if (instanceId != null)
+        {
+            LifecycleMode = InstanceLifecycleMode.ExistingInstance;
+            _preferences.SetInstanceLifecycleMode(ServerName, LifecycleMode);
+        }
+        _preferences.SetSelectedInstanceId(ServerName, instanceId);
     }
 }

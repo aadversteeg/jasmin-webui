@@ -48,4 +48,16 @@ public interface IPromptInvocationService
         string serverName,
         string instanceId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all running instances of an MCP server.
+    /// </summary>
+    /// <param name="serverUrl">The base URL of the jasmin-server.</param>
+    /// <param name="serverName">The name of the MCP server.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The list of running instances, or an error message on failure.</returns>
+    Task<ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>> GetInstancesAsync(
+        string serverUrl,
+        string serverName,
+        CancellationToken cancellationToken = default);
 }

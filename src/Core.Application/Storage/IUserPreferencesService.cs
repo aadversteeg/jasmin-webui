@@ -1,3 +1,5 @@
+using Core.Application.McpServers;
+
 namespace Core.Application.Storage;
 
 /// <summary>
@@ -42,6 +44,28 @@ public interface IUserPreferencesService
     // Tool invocation dialog
     int ToolInvocationInputPanelWidthPercent { get; set; }
     int ToolInvocationHistoryMaxItems { get; set; }
+
+    // Instance lifecycle preferences (per server)
+
+    /// <summary>
+    /// Gets the instance lifecycle mode for a server.
+    /// </summary>
+    InstanceLifecycleMode GetInstanceLifecycleMode(string serverName);
+
+    /// <summary>
+    /// Sets the instance lifecycle mode for a server.
+    /// </summary>
+    void SetInstanceLifecycleMode(string serverName, InstanceLifecycleMode mode);
+
+    /// <summary>
+    /// Gets the selected instance ID for a server (used when mode is ExistingInstance).
+    /// </summary>
+    string? GetSelectedInstanceId(string serverName);
+
+    /// <summary>
+    /// Sets the selected instance ID for a server.
+    /// </summary>
+    void SetSelectedInstanceId(string serverName, string? instanceId);
 
     /// <summary>
     /// Event raised when any preference changes.
