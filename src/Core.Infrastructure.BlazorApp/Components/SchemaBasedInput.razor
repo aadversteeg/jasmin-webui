@@ -4,6 +4,8 @@
 <div class="schema-input @(Depth > 0 ? "nested" : "")">
     @if (Parameter.Type.ToLowerInvariant() == "array")
     {
+        var isObjectArray = Parameter.ItemsType == "object" && Parameter.NestedSchema != null;
+
         <div class="array-input">
             <div class="array-header">
                 <label class="form-label" title="@Parameter.Description">
@@ -21,38 +23,37 @@
                 <div class="form-text mb-2">@Parameter.Description</div>
             }
 
-            <div class="array-items">
-                @for (var i = 0; i < ArrayItems.Count; i++)
-                {
-                    var index = i;
-                    var isObjectItem = Parameter.ItemsType == "object" && Parameter.NestedSchema != null;
-                    var isCollapsed = _collapsedItems.Contains(index);
-                    <div class="array-item card mb-2">
-                        <div class="card-header d-flex justify-content-between align-items-center py-1 px-2">
-                            <div class="d-flex align-items-center">
-                                @if (isObjectItem)
+            @if (isObjectArray)
+            {
+                @* Object array - use card-based layout with collapse *@
+                <div class="array-items">
+                    @for (var i = 0; i < ArrayItems.Count; i++)
+                    {
+                        var index = i;
+                        var isCollapsed = _collapsedItems.Contains(index);
+                        <div class="array-item card mb-2">
+                            <div class="card-header d-flex align-items-center py-1 px-2">
+                                <button type="button"
+                                        class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
+                                        @onclick="() => ToggleCollapse(index)"
+                                        title="@(isCollapsed ? "Expand" : "Collapse")">
+                                    <span class="collapse-icon @(isCollapsed ? "collapsed" : "")">&#9662;</span>
+                                </button>
+                                <span class="small text-muted item-label">Item @(index + 1)</span>
+                                @if (isCollapsed)
                                 {
-                                    <button type="button"
-                                            class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
-                                            @onclick="() => ToggleCollapse(index)"
-                                            title="@(isCollapsed ? "Expand" : "Collapse")">
-                                        <span class="collapse-icon @(isCollapsed ? "collapsed" : "")">&#9662;</span>
-                                    </button>
+                                    <span class="item-summary text-muted" title="@GetItemTooltip(index)">@GetItemSummary(index)</span>
                                 }
-                                <span class="small text-muted">Item @(index + 1)@(isCollapsed ? GetItemSummary(index) : "")</span>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm py-0 px-1 ms-auto delete-btn"
+                                        @onclick="() => RemoveItem(index)"
+                                        title="Remove item">
+                                    <span>&times;</span>
+                                </button>
                             </div>
-                            <button type="button"
-                                    class="btn btn-outline-danger btn-sm py-0 px-1"
-                                    @onclick="() => RemoveItem(index)"
-                                    title="Remove item">
-                                <span>&times;</span>
-                            </button>
-                        </div>
-                        @if (!isCollapsed)
-                        {
-                            <div class="card-body py-2 px-2">
-                                @if (isObjectItem)
-                                {
+                            @if (!isCollapsed)
+                            {
+                                <div class="card-body py-2 px-2">
                                     @foreach (var prop in Parameter.NestedSchema!.Parameters)
                                     {
                                         <SchemaBasedInput Parameter="prop"
@@ -60,23 +61,45 @@
                                                          OnValueChanged="v => SetArrayItemPropertyValue(index, prop.Name, v)"
                                                          Depth="Depth + 1" />
                                     }
-                                }
-                                else
-                                {
-                                    @* Primitive array items *@
-                                    <input type="@GetInputType(Parameter.ItemsType ?? "string")"
-                                           class="form-control form-control-sm"
-                                           value="@GetArrayItemValue(index)"
-                                           @onchange="e => SetArrayItemValue(index, e.Value)" />
-                                }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                @* Primitive array - use compact inline layout *@
+                <div class="primitive-array-items">
+                    @if (ArrayItems.Count == 0)
+                    {
+                        <div class="text-muted small mb-2">No items</div>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < ArrayItems.Count; i++)
+                        {
+                            var index = i;
+                            <div class="primitive-array-item d-flex gap-2 align-items-center mb-1">
+                                <input type="@GetInputType(Parameter.ItemsType ?? "string")"
+                                       class="form-control form-control-sm"
+                                       value="@GetArrayItemValue(index)"
+                                       @onchange="e => SetArrayItemValue(index, e.Value)"
+                                       placeholder="Item @(index + 1)" />
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm py-0 px-1 flex-shrink-0"
+                                        @onclick="() => RemoveItem(index)"
+                                        title="Remove item">
+                                    <span>&times;</span>
+                                </button>
                             </div>
                         }
-                    </div>
-                }
-            </div>
+                    }
+                </div>
+            }
 
             <button type="button"
-                    class="btn btn-outline-secondary btn-sm"
+                    class="btn btn-outline-secondary btn-sm mt-1"
                     @onclick="AddItem">
                 + Add Item
             </button>
@@ -85,27 +108,47 @@
     else if (Parameter.Type.ToLowerInvariant() == "object" && Parameter.NestedSchema != null)
     {
         <div class="object-input">
-            <label class="form-label" title="@Parameter.Description">
-                <code>@Parameter.Name</code>
-                @if (Parameter.Required)
+            <div class="object-header card mb-2">
+                <div class="card-header d-flex align-items-center py-1 px-2">
+                    <button type="button"
+                            class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
+                            @onclick="ToggleObjectCollapse"
+                            title="@(_objectCollapsed ? "Expand" : "Collapse")">
+                        <span class="collapse-icon @(_objectCollapsed ? "collapsed" : "")">&#9662;</span>
+                    </button>
+                    <label class="form-label mb-0 object-label" title="@Parameter.Description">
+                        <code>@Parameter.Name</code>
+                        @if (Parameter.Required)
+                        {
+                            <span class="text-danger">*</span>
+                        }
+                        <span class="text-muted small ms-2">(object)</span>
+                    </label>
+                    @if (_objectCollapsed)
+                    {
+                        <span class="collapsed-summary text-muted" title="@GetObjectTooltip()">
+                            @GetObjectSummary()
+                        </span>
+                    }
+                </div>
+                @if (!_objectCollapsed)
                 {
-                    <span class="text-danger">*</span>
-                }
-                <span class="text-muted small ms-2">(object)</span>
-            </label>
+                    <div class="card-body py-2 px-2">
+                        @if (!string.IsNullOrEmpty(Parameter.Description))
+                        {
+                            <div class="form-text mb-2">@Parameter.Description</div>
+                        }
 
-            @if (!string.IsNullOrEmpty(Parameter.Description))
-            {
-                <div class="form-text mb-2">@Parameter.Description</div>
-            }
-
-            <div class="object-properties">
-                @foreach (var prop in Parameter.NestedSchema.Parameters)
-                {
-                    <SchemaBasedInput Parameter="prop"
-                                     Value="@GetObjectPropertyValue(prop.Name)"
-                                     OnValueChanged="v => SetObjectPropertyValue(prop.Name, v)"
-                                     Depth="Depth + 1" />
+                        <div class="object-properties">
+                            @foreach (var prop in Parameter.NestedSchema.Parameters)
+                            {
+                                <SchemaBasedInput Parameter="prop"
+                                                 Value="@GetObjectPropertyValue(prop.Name)"
+                                                 OnValueChanged="v => SetObjectPropertyValue(prop.Name, v)"
+                                                 Depth="Depth + 1" />
+                            }
+                        </div>
+                    </div>
                 }
             </div>
         </div>
@@ -278,6 +321,7 @@
     public int Depth { get; set; } = 0;
 
     private HashSet<int> _collapsedItems = new();
+    private bool _objectCollapsed = false;
 
     private List<object?> ArrayItems => GetArrayItems();
     private Dictionary<string, object?> ObjectProperties => GetObjectProperties();
@@ -295,23 +339,104 @@
         }
     }
 
+    private void ToggleObjectCollapse()
+    {
+        _objectCollapsed = !_objectCollapsed;
+    }
+
+    private string GetObjectSummary()
+    {
+        var props = ObjectProperties;
+        var nonNullProps = props.Where(p => p.Value != null && !string.IsNullOrEmpty(p.Value.ToString())).ToList();
+
+        if (nonNullProps.Count == 0)
+        {
+            return "(empty)";
+        }
+
+        var summary = string.Join(", ", nonNullProps.Take(3).Select(p => $"{p.Key}: {FormatValueForSummary(p.Value)}"));
+        if (nonNullProps.Count > 3)
+        {
+            summary += $" (+{nonNullProps.Count - 3} more)";
+        }
+
+        if (summary.Length > 60)
+        {
+            summary = summary.Substring(0, 57) + "...";
+        }
+
+        return summary;
+    }
+
+    private string GetObjectTooltip()
+    {
+        var props = ObjectProperties;
+        var nonNullProps = props.Where(p => p.Value != null && !string.IsNullOrEmpty(p.Value.ToString())).ToList();
+
+        if (nonNullProps.Count == 0)
+        {
+            return "No values set";
+        }
+
+        return string.Join("\n", nonNullProps.Select(p => $"{p.Key}: {FormatValueForTooltip(p.Value)}"));
+    }
+
+    private string FormatValueForSummary(object? value)
+    {
+        if (value == null) return "null";
+
+        var str = value.ToString() ?? "";
+        if (str.Length > 20)
+        {
+            return str.Substring(0, 17) + "...";
+        }
+        return str;
+    }
+
+    private string FormatValueForTooltip(object? value)
+    {
+        if (value == null) return "null";
+
+        if (value is Dictionary<string, object?> dict)
+        {
+            return "{" + string.Join(", ", dict.Select(p => $"{p.Key}: {p.Value}")) + "}";
+        }
+
+        if (value is List<object?> list)
+        {
+            return "[" + string.Join(", ", list.Select(i => i?.ToString() ?? "null")) + "]";
+        }
+
+        return value.ToString() ?? "";
+    }
+
     private string GetItemSummary(int index)
     {
         var items = ArrayItems;
         if (index >= 0 && index < items.Count && items[index] is Dictionary<string, object?> itemDict)
         {
-            var firstValue = itemDict.Values.FirstOrDefault(v => v != null && !string.IsNullOrEmpty(v.ToString()));
-            if (firstValue != null)
+            var nonNullProps = itemDict.Where(p => p.Value != null && !string.IsNullOrEmpty(p.Value.ToString())).ToList();
+            if (nonNullProps.Count > 0)
             {
-                var summary = firstValue.ToString() ?? "";
-                if (summary.Length > 30)
-                {
-                    summary = summary.Substring(0, 27) + "...";
-                }
-                return $" - {summary}";
+                var summary = string.Join(", ", nonNullProps.Select(p => $"{p.Key}: {FormatValueForSummary(p.Value)}"));
+                return summary;
             }
         }
-        return "";
+        return "(empty)";
+    }
+
+    private string GetItemTooltip(int index)
+    {
+        var items = ArrayItems;
+        if (index >= 0 && index < items.Count && items[index] is Dictionary<string, object?> itemDict)
+        {
+            var nonNullProps = itemDict.Where(p => p.Value != null && !string.IsNullOrEmpty(p.Value.ToString())).ToList();
+            if (nonNullProps.Count > 0)
+            {
+                return string.Join("\n", nonNullProps.Select(p => $"{p.Key}: {FormatValueForTooltip(p.Value)}"));
+            }
+        }
+        return "No values set";
     }
 
     private List<object?> GetArrayItems()

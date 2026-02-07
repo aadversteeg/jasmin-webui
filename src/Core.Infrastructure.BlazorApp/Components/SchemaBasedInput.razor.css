@@ -76,6 +76,56 @@
     transform: rotate(-90deg);
 }
 
+/* Object collapse styles */
+.object-header {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.object-header .card-header {
+    background-color: var(--bs-secondary-bg);
+    font-size: 0.85rem;
+}
+
+.object-header .card-body {
+    padding: 0.5rem;
+}
+
+.collapsed-summary {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.75rem;
+    cursor: help;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+/* Label styles */
+.item-label,
+.object-label {
+    flex-shrink: 0;
+}
+
+.item-summary {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.75rem;
+    cursor: help;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+    text-align: right;
+}
+
+.delete-btn {
+    flex-shrink: 0;
+}
+
 /* Key-value input styles */
 .key-value-input {
     margin-bottom: 0.75rem;
@@ -96,5 +146,14 @@
 
 .key-value-item .value-input {
     flex: 1;
+    font-family: monospace;
+}
+
+/* Primitive array styles */
+.primitive-array-items {
+    margin-bottom: 0.5rem;
+}
+
+.primitive-array-item input {
     font-family: monospace;
 }
