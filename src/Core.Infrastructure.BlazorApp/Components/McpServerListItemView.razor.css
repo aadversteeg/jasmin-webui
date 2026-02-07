@@ -83,13 +83,23 @@
     flex-shrink: 0;
 }
 
-.delete-btn {
+.instance-badge.clickable {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.instance-badge.clickable:hover {
+    background-color: #495057 !important;
+}
+
+.action-btn {
     font-size: 0.875rem;
     line-height: 1;
     opacity: 0.6;
     text-decoration: none;
+    margin-left: 0.25rem;
 }
 
-.delete-btn:hover {
+.action-btn:hover {
     opacity: 1;
 }

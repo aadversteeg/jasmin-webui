@@ -61,6 +61,18 @@ public partial class McpServerListViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Refreshes the server list from the API.
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshAsync()
+    {
+        if (!string.IsNullOrEmpty(_currentServerUrl))
+        {
+            await _serverListService.LoadAsync(_currentServerUrl);
+        }
+    }
+
+    /// <summary>
     /// Requests deletion of an MCP server with confirmation.
     /// </summary>
     /// <param name="serverName">The name of the server to delete.</param>

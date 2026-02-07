@@ -336,4 +336,147 @@ public class ToolInputSchemaParserTests
         var nameParam = result.Parameters.First(p => p.Name == "name");
         nameParam.Default.Should().Be("default-name");
     }
+
+    [Fact(DisplayName = "TIP-012: Parse additionalProperties with type string")]
+    public void TIP012()
+    {
+        // Arrange
+        var schema = @"{
+            ""type"": ""object"",
+            ""properties"": {
+                ""headers"": {
+                    ""type"": ""object"",
+                    ""additionalProperties"": {
+                        ""type"": ""string""
+                    },
+                    ""description"": ""HTTP headers as key-value pairs""
+                }
+            }
+        }";
+
+        // Act
+        var result = ToolInputSchemaParser.Parse(schema);
+
+        // Assert
+        result.Should().NotBeNull();
+        var param = result!.Parameters[0];
+        param.Name.Should().Be("headers");
+        param.Type.Should().Be("object");
+        param.AdditionalPropertiesType.Should().Be("string");
+        param.NestedSchema.Should().BeNull();
+        param.Description.Should().Be("HTTP headers as key-value pairs");
+    }
+
+    [Fact(DisplayName = "TIP-013: Parse additionalProperties with type number")]
+    public void TIP013()
+    {
+        // Arrange
+        var schema = @"{
+            ""type"": ""object"",
+            ""properties"": {
+                ""scores"": {
+                    ""type"": ""object"",
+                    ""additionalProperties"": {
+                        ""type"": ""number""
+                    }
+                }
+            }
+        }";
+
+        // Act
+        var result = ToolInputSchemaParser.Parse(schema);
+
+        // Assert
+        result.Should().NotBeNull();
+        var param = result!.Parameters[0];
+        param.Name.Should().Be("scores");
+        param.Type.Should().Be("object");
+        param.AdditionalPropertiesType.Should().Be("number");
+    }
+
+    [Fact(DisplayName = "TIP-014: Parse additionalProperties: true allows any type")]
+    public void TIP014()
+    {
+        // Arrange
+        var schema = @"{
+            ""type"": ""object"",
+            ""properties"": {
+                ""metadata"": {
+                    ""type"": ""object"",
+                    ""additionalProperties"": true
+                }
+            }
+        }";
+
+        // Act
+        var result = ToolInputSchemaParser.Parse(schema);
+
+        // Assert
+        result.Should().NotBeNull();
+        var param = result!.Parameters[0];
+        param.Name.Should().Be("metadata");
+        param.Type.Should().Be("object");
+        param.AdditionalPropertiesType.Should().Be("any");
+    }
+
+    [Fact(DisplayName = "TIP-015: Object with both properties and additionalProperties")]
+    public void TIP015()
+    {
+        // Arrange
+        var schema = @"{
+            ""type"": ""object"",
+            ""properties"": {
+                ""env"": {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""PATH"": { ""type"": ""string"" }
+                    },
+                    ""additionalProperties"": {
+                        ""type"": ""string""
+                    }
+                }
+            }
+        }";
+
+        // Act
+        var result = ToolInputSchemaParser.Parse(schema);
+
+        // Assert
+        result.Should().NotBeNull();
+        var param = result!.Parameters[0];
+        param.Name.Should().Be("env");
+        param.Type.Should().Be("object");
+        // Has both NestedSchema (fixed properties) and additionalProperties
+        param.NestedSchema.Should().NotBeNull();
+        param.NestedSchema!.Parameters.Should().Contain(p => p.Name == "PATH");
+        param.AdditionalPropertiesType.Should().Be("string");
+    }
+
+    [Fact(DisplayName = "TIP-016: Object without additionalProperties has null AdditionalPropertiesType")]
+    public void TIP016()
+    {
+        // Arrange
+        var schema = @"{
+            ""type"": ""object"",
+            ""properties"": {
+                ""config"": {
+                    ""type"": ""object"",
+                    ""properties"": {
+                        ""host"": { ""type"": ""string"" }
+                    }
+                }
+            }
+        }";
+
+        // Act
+        var result = ToolInputSchemaParser.Parse(schema);
+
+        // Assert
+        result.Should().NotBeNull();
+        var param = result!.Parameters[0];
+        param.Name.Should().Be("config");
+        param.Type.Should().Be("object");
+        param.AdditionalPropertiesType.Should().BeNull();
+        param.NestedSchema.Should().NotBeNull();
+    }
 }

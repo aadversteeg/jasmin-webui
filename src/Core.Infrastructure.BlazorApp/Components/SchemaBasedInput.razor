@@ -110,6 +110,87 @@
             </div>
         </div>
     }
+    else if (Parameter.Type.ToLowerInvariant() == "object" && !string.IsNullOrEmpty(Parameter.AdditionalPropertiesType))
+    {
+        @* Object with dynamic key-value pairs (additionalProperties) *@
+        <div class="key-value-input">
+            <label class="form-label" title="@Parameter.Description">
+                <code>@Parameter.Name</code>
+                @if (Parameter.Required)
+                {
+                    <span class="text-danger">*</span>
+                }
+                <span class="text-muted small ms-2">(key-value pairs)</span>
+            </label>
+
+            @if (!string.IsNullOrEmpty(Parameter.Description))
+            {
+                <div class="form-text mb-2">@Parameter.Description</div>
+            }
+
+            <div class="key-value-items">
+                @if (KeyValueItems.Count == 0)
+                {
+                    <div class="text-muted small mb-2">No items defined</div>
+                }
+                else
+                {
+                    @for (var i = 0; i < KeyValueItems.Count; i++)
+                    {
+                        var index = i;
+                        <div class="key-value-item card mb-2">
+                            <div class="card-body py-2 px-2 d-flex gap-2 align-items-center">
+                                <input type="text"
+                                       class="form-control form-control-sm key-input"
+                                       value="@KeyValueItems[index].Key"
+                                       @onchange="e => UpdateKeyValueKey(index, e.Value?.ToString() ?? string.Empty)"
+                                       placeholder="Key" />
+                                <span class="text-muted">=</span>
+                                @if (Parameter.AdditionalPropertiesType == "boolean")
+                                {
+                                    <div class="form-check value-input">
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               checked="@GetKeyValueBoolValue(index)"
+                                               @onchange="e => UpdateKeyValueValue(index, e.Value)" />
+                                    </div>
+                                }
+                                else if (Parameter.AdditionalPropertiesType is "number" or "integer")
+                                {
+                                    <input type="number"
+                                           class="form-control form-control-sm value-input"
+                                           value="@KeyValueItems[index].Value"
+                                           step="@(Parameter.AdditionalPropertiesType == "integer" ? "1" : "any")"
+                                           @onchange="e => UpdateKeyValueValue(index, e.Value)"
+                                           placeholder="Value" />
+                                }
+                                else
+                                {
+                                    <input type="text"
+                                           class="form-control form-control-sm value-input"
+                                           value="@KeyValueItems[index].Value?.ToString()"
+                                           @onchange="e => UpdateKeyValueValue(index, e.Value)"
+                                           placeholder="Value" />
+                                }
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm py-0 px-1"
+                                        @onclick="() => RemoveKeyValueItem(index)"
+                                        title="Remove item">
+                                    <span>&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    @onclick="AddKeyValueItem">
+                + Add Item
+            </button>
+        </div>
+    }
     else
     {
         @* Primitive types *@
@@ -200,6 +281,7 @@
 
     private List<object?> ArrayItems => GetArrayItems();
     private Dictionary<string, object?> ObjectProperties => GetObjectProperties();
+    private List<KeyValuePair<string, object?>> KeyValueItems => GetKeyValueItems();
 
     private void ToggleCollapse(int index)
     {
@@ -266,6 +348,94 @@
             return result;
         }
         return new Dictionary<string, object?>();
+    }
+
+    private List<KeyValuePair<string, object?>> GetKeyValueItems()
+    {
+        var props = GetObjectProperties();
+        return props.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, kvp.Value)).ToList();
+    }
+
+    private bool GetKeyValueBoolValue(int index)
+    {
+        var items = KeyValueItems;
+        if (index >= 0 && index < items.Count)
+        {
+            var value = items[index].Value;
+            if (value is bool b) return b;
+            if (value is string s && bool.TryParse(s, out var result)) return result;
+        }
+        return false;
+    }
+
+    private async Task AddKeyValueItem()
+    {
+        var props = new Dictionary<string, object?>(GetObjectProperties())
+        {
+            [string.Empty] = GetDefaultValueForType(Parameter.AdditionalPropertiesType ?? "string")
+        };
+        await OnValueChanged.InvokeAsync(props);
+    }
+
+    private async Task RemoveKeyValueItem(int index)
+    {
+        var items = KeyValueItems;
+        if (index >= 0 && index < items.Count)
+        {
+            var props = new Dictionary<string, object?>(GetObjectProperties());
+            props.Remove(items[index].Key);
+            await OnValueChanged.InvokeAsync(props);
+        }
+    }
+
+    private async Task UpdateKeyValueKey(int index, string newKey)
+    {
+        var items = KeyValueItems;
+        if (index >= 0 && index < items.Count)
+        {
+            var oldKey = items[index].Key;
+            var value = items[index].Value;
+
+            // Build new dictionary preserving order
+            var newProps = new Dictionary<string, object?>();
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (i == index)
+                {
+                    newProps[newKey] = value;
+                }
+                else
+                {
+                    newProps[items[i].Key] = items[i].Value;
+                }
+            }
+            await OnValueChanged.InvokeAsync(newProps);
+        }
+    }
+
+    private async Task UpdateKeyValueValue(int index, object? newValue)
+    {
+        var items = KeyValueItems;
+        if (index >= 0 && index < items.Count)
+        {
+            var key = items[index].Key;
+            var convertedValue = ConvertInputValue(newValue, Parameter.AdditionalPropertiesType ?? "string");
+
+            // Build new dictionary preserving order
+            var newProps = new Dictionary<string, object?>();
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (i == index)
+                {
+                    newProps[key] = convertedValue;
+                }
+                else
+                {
+                    newProps[items[i].Key] = items[i].Value;
+                }
+            }
+            await OnValueChanged.InvokeAsync(newProps);
+        }
     }
 
     private object? JsonElementToObject(JsonElement element)

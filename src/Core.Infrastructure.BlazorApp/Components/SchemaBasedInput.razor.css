@@ -75,3 +75,26 @@
 .collapse-icon.collapsed {
     transform: rotate(-90deg);
 }
+
+/* Key-value input styles */
+.key-value-input {
+    margin-bottom: 0.75rem;
+}
+
+.key-value-items {
+    margin-bottom: 0.5rem;
+}
+
+.key-value-item {
+    background-color: var(--bs-tertiary-bg);
+}
+
+.key-value-item .key-input {
+    flex: 0 0 35%;
+    font-family: monospace;
+}
+
+.key-value-item .value-input {
+    flex: 1;
+    font-family: monospace;
+}

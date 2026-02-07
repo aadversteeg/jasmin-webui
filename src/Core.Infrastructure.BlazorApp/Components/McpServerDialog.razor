@@ -1,0 +1,192 @@
+@inherits MvvmComponentBase<McpServerDialogViewModel>
+@using Core.Application.McpServers
+
+<ModalDialog IsOpen="@ViewModel.IsOpen"
+             Title="@ViewModel.DialogTitle"
+             MaxWidth="600"
+             OnClose="() => ViewModel.CancelCommand.ExecuteAsync(null)">
+    <ChildContent>
+        @if (ViewModel.IsLoading)
+        {
+            <div class="d-flex justify-content-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
+                <input type="text"
+                       class="form-control"
+                       id="serverName"
+                       placeholder="my-server"
+                       @bind="ViewModel.ServerName"
+                       @bind:event="oninput"
+                       disabled="@(ViewModel.IsEditMode || IsTesting)" />
+                @if (!ViewModel.IsEditMode)
+                {
+                    <div class="form-text">A unique identifier for this server (no spaces)</div>
+                }
+            </div>
+
+            <div class="mb-3">
+                <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
+                <input type="text"
+                       class="form-control"
+                       id="command"
+                       placeholder="npx"
+                       @bind="ViewModel.Command"
+                       @bind:event="oninput"
+                       disabled="@IsTesting" />
+                <div class="form-text">The executable command (e.g., npx, docker, dotnet)</div>
+            </div>
+
+            <div class="mb-3">
+                <SchemaBasedInput Parameter="@ArgumentsParameter"
+                                  Value="@GetArgumentsValue()"
+                                  OnValueChanged="OnArgumentsChanged" />
+            </div>
+
+            <div class="mb-3">
+                <SchemaBasedInput Parameter="@EnvironmentVariablesParameter"
+                                  Value="@GetEnvironmentVariablesValue()"
+                                  OnValueChanged="OnEnvironmentVariablesChanged" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
+            {
+                <div class="alert alert-danger py-2 mb-3">
+                    @ViewModel.ValidationError
+                </div>
+            }
+
+            @if (ViewModel.TestState != ConnectionTestState.None)
+            {
+                <div class="test-result @GetTestResultClass()">
+                    @if (ViewModel.TestState == ConnectionTestState.Testing)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <span>Testing configuration...</span>
+                    }
+                    else if (ViewModel.TestState == ConnectionTestState.Success)
+                    {
+                        <span class="test-icon">&#10003;</span>
+                        <span>Configuration test passed</span>
+                    }
+                    else if (ViewModel.TestState == ConnectionTestState.Failed)
+                    {
+                        <span class="test-icon">&#10007;</span>
+                        <span>@(ViewModel.TestErrorMessage ?? "Configuration test failed")</span>
+                    }
+                </div>
+            }
+        }
+    </ChildContent>
+    <FooterContent>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                @onclick="TestConfiguration"
+                disabled="@(!CanTest)">
+            @if (IsTesting)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span>Testing...</span>
+            }
+            else
+            {
+                <span>Test</span>
+            }
+        </button>
+        <button type="button"
+                class="btn btn-secondary"
+                @onclick="Cancel">
+            Cancel
+        </button>
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="Save"
+                disabled="@(!CanSave)">
+            Save
+        </button>
+    </FooterContent>
+</ModalDialog>
+
+@code {
+    private bool IsTesting => ViewModel.TestState == ConnectionTestState.Testing;
+    private bool CanTest => !string.IsNullOrWhiteSpace(ViewModel.Command) && !IsTesting;
+    private bool CanSave => ViewModel.TestState == ConnectionTestState.Success;
+
+    private static readonly ToolInputParameter ArgumentsParameter = new(
+        Name: "args",
+        Type: "array",
+        Description: "Command line arguments",
+        Required: false,
+        EnumValues: null,
+        Default: null,
+        NestedSchema: null,
+        ItemsType: "string");
+
+    private static readonly ToolInputParameter EnvironmentVariablesParameter = new(
+        Name: "env",
+        Type: "object",
+        Description: "Environment variables",
+        Required: false,
+        EnumValues: null,
+        Default: null,
+        NestedSchema: null,
+        ItemsType: null,
+        AdditionalPropertiesType: "string");
+
+    private object? GetArgumentsValue()
+    {
+        return ViewModel.Arguments.Cast<object?>().ToList();
+    }
+
+    private object? GetEnvironmentVariablesValue()
+    {
+        return ViewModel.EnvironmentVariables.ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value);
+    }
+
+    private void OnArgumentsChanged(object? value)
+    {
+        if (value is List<object?> list)
+        {
+            ViewModel.Arguments = list.Select(x => x?.ToString() ?? string.Empty).ToList();
+        }
+    }
+
+    private void OnEnvironmentVariablesChanged(object? value)
+    {
+        if (value is Dictionary<string, object?> dict)
+        {
+            ViewModel.EnvironmentVariables = dict.ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value?.ToString() ?? string.Empty);
+        }
+    }
+
+    private async Task TestConfiguration()
+    {
+        await ViewModel.TestConfigurationCommand.ExecuteAsync(null);
+    }
+
+    private async Task Save()
+    {
+        await ViewModel.SaveCommand.ExecuteAsync(null);
+    }
+
+    private async Task Cancel()
+    {
+        await ViewModel.CancelCommand.ExecuteAsync(null);
+    }
+
+    private string GetTestResultClass() => ViewModel.TestState switch
+    {
+        ConnectionTestState.Testing => "test-testing",
+        ConnectionTestState.Success => "test-success",
+        ConnectionTestState.Failed => "test-failed",
+        _ => ""
+    };
+}

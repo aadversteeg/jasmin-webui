@@ -5,14 +5,25 @@
     <div class="server-row-top">
         <span class="status-indicator @GetStatusClass()" title="@GetStatusTitle()"></span>
         <span class="server-name">@Server.Name</span>
-        <span class="badge bg-secondary instance-badge">@Server.InstanceCount</span>
+        <span class="badge bg-secondary instance-badge clickable"
+              @onclick="OnBadgeClick"
+              @onclick:stopPropagation="true"
+              title="Click to manage instances">@Server.InstanceCount</span>
     </div>
     <div class="server-row-bottom">
         @if (GetTimestampText() is { } timestampText)
         {
             <span class="timestamp-text" title="@GetTimestampTooltip()">@timestampText</span>
         }
-        <button class="btn btn-link btn-sm text-secondary delete-btn p-0"
+        <button class="btn btn-link btn-sm text-secondary action-btn p-0"
+                @onclick="OnEditClick"
+                @onclick:stopPropagation="true"
+                title="Edit server">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+        </button>
+        <button class="btn btn-link btn-sm text-secondary action-btn p-0"
                 @onclick="OnDeleteClick"
                 @onclick:stopPropagation="true"
                 title="Delete server">
@@ -30,6 +41,12 @@
 
     [Parameter]
     public EventCallback<string> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnManageInstances { get; set; }
 
     private void OnItemClick()
     {
@@ -117,5 +134,15 @@
     private async Task OnDeleteClick()
     {
         await OnDelete.InvokeAsync(Server.Name);
+    }
+
+    private async Task OnEditClick()
+    {
+        await OnEdit.InvokeAsync(Server.Name);
+    }
+
+    private async Task OnBadgeClick()
+    {
+        await OnManageInstances.InvokeAsync(Server.Name);
     }
 }

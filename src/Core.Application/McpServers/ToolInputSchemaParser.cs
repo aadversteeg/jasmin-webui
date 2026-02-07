@@ -108,6 +108,22 @@ public static class ToolInputSchemaParser
             nestedSchema = ParseSchema(element);
         }
 
+        // Handle object types with additionalProperties (dynamic key-value pairs)
+        string? additionalPropertiesType = null;
+        if (type == "object" && element.TryGetProperty("additionalProperties", out var additionalProps))
+        {
+            if (additionalProps.ValueKind == JsonValueKind.True)
+            {
+                // additionalProperties: true means any value type is allowed
+                additionalPropertiesType = "any";
+            }
+            else if (additionalProps.ValueKind == JsonValueKind.Object)
+            {
+                // additionalProperties: { type: "string" } specifies the value type
+                additionalPropertiesType = GetStringProperty(additionalProps, "type") ?? "string";
+            }
+        }
+
         return new ToolInputParameter(
             name,
             type,
@@ -116,7 +132,8 @@ public static class ToolInputSchemaParser
             enumValues,
             defaultValue,
             nestedSchema,
-            itemsType);
+            itemsType,
+            additionalPropertiesType);
     }
 
     private static string? GetStringProperty(JsonElement element, string propertyName)

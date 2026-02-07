@@ -1,0 +1,13 @@
+.instance-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.instance-card {
+    border: 1px solid var(--bs-border-color);
+}
+
+.instance-id {
+    font-size: 0.9rem;
+    font-weight: 500;
+}

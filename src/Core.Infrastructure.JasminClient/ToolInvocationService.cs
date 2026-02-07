@@ -130,6 +130,44 @@ public class ToolInvocationService : IToolInvocationService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>> GetInstancesAsync(
+        string serverUrl,
+        string serverName,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/instances");
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("Get instances failed with status {Status}: {Content}", response.StatusCode, errorContent);
+                return ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>.Failure($"Failed to get instances: {response.StatusCode}");
+            }
+
+            var listResponse = await response.Content.ReadFromJsonAsync<InstanceListResponseDto>(cancellationToken);
+            if (listResponse == null)
+            {
+                return ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>.Failure("Invalid response from server");
+            }
+
+            var instances = listResponse.Items.Select(i => new McpServerInstance(
+                i.InstanceId,
+                i.ServerName,
+                DateTimeOffset.Parse(i.StartedAt))).ToList();
+
+            return ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>.Success(instances);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get instances for server {ServerName}", serverName);
+            return ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>.Failure(ex.Message);
+        }
+    }
+
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
         string serverName,

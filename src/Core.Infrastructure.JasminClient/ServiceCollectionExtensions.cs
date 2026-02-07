@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IToolInvocationService, ToolInvocationService>();
         services.AddScoped<IPromptInvocationService, PromptInvocationService>();
         services.AddScoped<IResourceViewerService, ResourceViewerService>();
+        services.AddScoped<IMcpServerConfigService, McpServerConfigService>();
         return services;
     }
 }

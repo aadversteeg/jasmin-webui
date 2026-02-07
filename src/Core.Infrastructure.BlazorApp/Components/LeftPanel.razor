@@ -2,6 +2,8 @@
 @inject McpServerListViewModel ServerListVM
 @inject NavigationManager NavigationManager
 @inject ConfirmationDialogViewModel ConfirmDialogVM
+@inject McpServerDialogViewModel McpServerDialogVM
+@inject InstanceManagementViewModel InstanceManagementVM
 
 <SlidePanel Position="PanelPosition.Left"
             Width="@ViewModel.PanelWidth"
@@ -9,6 +11,11 @@
     <Header>
         <div class="d-flex align-items-center justify-content-between w-100">
             <h5 class="mb-0">MCP Servers</h5>
+            <button class="btn btn-sm btn-outline-primary"
+                    @onclick="HandleAddServer"
+                    title="Add MCP Server">
+                + Add
+            </button>
         </div>
     </Header>
     <ChildContent>
@@ -25,12 +32,16 @@
                 {
                     <McpServerListItemView Server="server"
                                           IsSelected="IsServerSelected(server.Name)"
-                                          OnDelete="HandleDeleteRequest" />
+                                          OnDelete="HandleDeleteRequest"
+                                          OnEdit="HandleEditRequest"
+                                          OnManageInstances="HandleManageInstances" />
                 }
             }
         </div>
     </ChildContent>
 </SlidePanel>
+
+<InstanceManagementDialog />
 
 @code {
     private bool _isDisposed;
@@ -41,6 +52,7 @@
         ServerListVM.ServersChanged += HandleServersChanged;
         ServerListVM.DeleteConfirmationRequested += HandleDeleteConfirmation;
         NavigationManager.LocationChanged += HandleLocationChanged;
+        McpServerDialogVM.ServerSaved += HandleServerSaved;
     }
 
     private void OnWidthChanged(int newWidth)
@@ -86,6 +98,27 @@
         await ServerListVM.DeleteServerCommand.ExecuteAsync(serverName);
     }
 
+    private void HandleAddServer()
+    {
+        McpServerDialogVM.OpenForAddCommand.Execute(null);
+    }
+
+    private async Task HandleEditRequest(string serverName)
+    {
+        await McpServerDialogVM.OpenForEditCommand.ExecuteAsync(serverName);
+    }
+
+    private async Task HandleManageInstances(string serverName)
+    {
+        await InstanceManagementVM.OpenCommand.ExecuteAsync(serverName);
+    }
+
+    private async void HandleServerSaved(string serverName)
+    {
+        // Refresh the server list
+        await ServerListVM.RefreshCommand.ExecuteAsync(null);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -94,6 +127,7 @@
             ServerListVM.ServersChanged -= HandleServersChanged;
             ServerListVM.DeleteConfirmationRequested -= HandleDeleteConfirmation;
             NavigationManager.LocationChanged -= HandleLocationChanged;
+            McpServerDialogVM.ServerSaved -= HandleServerSaved;
         }
         base.Dispose(disposing);
     }

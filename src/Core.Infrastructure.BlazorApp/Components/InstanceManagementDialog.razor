@@ -1,0 +1,112 @@
+@using Core.Application.McpServers
+@using Core.Infrastructure.BlazorApp.ViewModels
+@inherits Blazing.Mvvm.Components.MvvmComponentBase<InstanceManagementViewModel>
+
+<ModalDialog IsOpen="@ViewModel.IsOpen"
+             Title="@GetTitle()"
+             OnClose="HandleClose"
+             MaxWidth="600">
+    <ChildContent>
+        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+        {
+            <div class="alert alert-danger mb-3">@ViewModel.ErrorMessage</div>
+        }
+
+        @if (ViewModel.IsLoading)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border text-secondary" role="status"></div>
+                <p class="mt-2 text-muted">Loading instances...</p>
+            </div>
+        }
+        else if (ViewModel.Instances.Count == 0)
+        {
+            <div class="text-center py-4">
+                <p class="text-muted">No instances running</p>
+            </div>
+        }
+        else
+        {
+            <div class="instance-list">
+                @foreach (var instance in ViewModel.Instances)
+                {
+                    <div class="instance-card card mb-2">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="instance-id font-monospace">@instance.InstanceId</div>
+                                    <small class="text-muted">Started: @FormatDateTime(instance.StartedAt)</small>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm"
+                                        @onclick="() => HandleStop(instance.InstanceId)"
+                                        disabled="@(ViewModel.StoppingInstanceId == instance.InstanceId)">
+                                    @if (ViewModel.StoppingInstanceId == instance.InstanceId)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    }
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </ChildContent>
+
+    <FooterContent>
+        <div class="d-flex justify-content-between w-100">
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary"
+                        @onclick="HandleStartNew"
+                        disabled="@ViewModel.IsStartingInstance">
+                    @if (ViewModel.IsStartingInstance)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    + Start New Instance
+                </button>
+                <button class="btn btn-outline-secondary"
+                        @onclick="HandleRefresh"
+                        disabled="@ViewModel.IsLoading">
+                    Refresh
+                </button>
+            </div>
+            <button class="btn btn-secondary" @onclick="HandleClose">
+                Close
+            </button>
+        </div>
+    </FooterContent>
+</ModalDialog>
+
+@code {
+    private string GetTitle()
+    {
+        return $"Instances: {ViewModel.ServerName}";
+    }
+
+    private string FormatDateTime(DateTimeOffset dateTime)
+    {
+        return dateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private async Task HandleStop(string instanceId)
+    {
+        await ViewModel.StopInstanceCommand.ExecuteAsync(instanceId);
+    }
+
+    private async Task HandleStartNew()
+    {
+        await ViewModel.StartNewInstanceCommand.ExecuteAsync(null);
+    }
+
+    private async Task HandleRefresh()
+    {
+        await ViewModel.RefreshCommand.ExecuteAsync(null);
+    }
+
+    private void HandleClose()
+    {
+        ViewModel.CloseCommand.Execute(null);
+    }
+}
