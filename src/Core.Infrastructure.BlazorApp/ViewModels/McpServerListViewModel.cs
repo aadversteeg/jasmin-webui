@@ -9,11 +9,21 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 public partial class McpServerListViewModel : ViewModelBase
 {
     private readonly IMcpServerListService _serverListService;
+    private readonly IToolInvocationService _invocationService;
     private string? _currentServerUrl;
 
-    public McpServerListViewModel(IMcpServerListService serverListService)
+    [ObservableProperty]
+    private bool _isRefreshing;
+
+    [ObservableProperty]
+    private string? _refreshingServerName;
+
+    public McpServerListViewModel(
+        IMcpServerListService serverListService,
+        IToolInvocationService invocationService)
     {
         _serverListService = serverListService;
+        _invocationService = invocationService;
         _serverListService.ServersChanged += OnServersChanged;
     }
 
@@ -99,5 +109,67 @@ public partial class McpServerListViewModel : ViewModelBase
     private void OnServersChanged()
     {
         ServersChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Refreshes metadata for an MCP server.
+    /// If the server has running instances, uses one of them.
+    /// Otherwise, starts a temporary instance, refreshes, then stops it.
+    /// </summary>
+    /// <param name="serverName">The name of the server to refresh metadata for.</param>
+    [RelayCommand]
+    private async Task RefreshMetadataAsync(string serverName)
+    {
+        if (string.IsNullOrEmpty(_currentServerUrl) || IsRefreshing)
+        {
+            return;
+        }
+
+        IsRefreshing = true;
+        RefreshingServerName = serverName;
+
+        try
+        {
+            // Get running instances
+            var instancesResult = await _invocationService.GetInstancesAsync(_currentServerUrl, serverName);
+
+            string instanceId;
+            bool startedTemporaryInstance = false;
+
+            if (instancesResult.IsSuccess && instancesResult.Value!.Count > 0)
+            {
+                // Use the first running instance
+                instanceId = instancesResult.Value[0].InstanceId;
+            }
+            else
+            {
+                // Start a temporary instance
+                var startResult = await _invocationService.StartInstanceAsync(_currentServerUrl, serverName);
+                if (!startResult.IsSuccess)
+                {
+                    // Failed to start instance - the server list will update via SSE
+                    return;
+                }
+                instanceId = startResult.Value!;
+                startedTemporaryInstance = true;
+            }
+
+            // Refresh metadata
+            var refreshResult = await _invocationService.RefreshMetadataAsync(
+                _currentServerUrl,
+                serverName,
+                instanceId);
+
+            // If we started a temporary instance, stop it
+            if (startedTemporaryInstance)
+            {
+                await _invocationService.StopInstanceAsync(_currentServerUrl, serverName, instanceId);
+            }
+        }
+        finally
+        {
+            IsRefreshing = false;
+            RefreshingServerName = null;
+        }
     }
 }

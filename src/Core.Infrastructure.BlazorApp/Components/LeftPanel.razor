@@ -59,7 +59,9 @@
                                           IsSelected="IsServerSelected(server.Name)"
                                           OnDelete="HandleDeleteRequest"
                                           OnEdit="HandleEditRequest"
-                                          OnManageInstances="HandleManageInstances" />
+                                          OnManageInstances="HandleManageInstances"
+                                          OnRefresh="HandleRefreshMetadata"
+                                          IsRefreshing="@(ServerListVM.IsRefreshing && ServerListVM.RefreshingServerName == server.Name)" />
                 }
             }
         </div>
@@ -146,6 +148,11 @@
     private async Task HandleManageInstances(string serverName)
     {
         await InstanceManagementVM.OpenCommand.ExecuteAsync(serverName);
+    }
+
+    private async Task HandleRefreshMetadata(string serverName)
+    {
+        await ServerListVM.RefreshMetadataCommand.ExecuteAsync(serverName);
     }
 
     private async void HandleServerSaved(string serverName)

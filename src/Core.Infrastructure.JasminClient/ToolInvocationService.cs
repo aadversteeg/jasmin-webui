@@ -168,6 +168,32 @@ public class ToolInvocationService : IToolInvocationService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<ToolInvocationServiceResult> RefreshMetadataAsync(
+        string serverUrl,
+        string serverName,
+        string instanceId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new CreateRequestDto("refreshMetadata", instanceId, null, null);
+            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return ToolInvocationServiceResult.Failure(result.Error!);
+            }
+
+            return ToolInvocationServiceResult.Success();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh metadata for instance {InstanceId} on server {ServerName}", instanceId, serverName);
+            return ToolInvocationServiceResult.Failure(ex.Message);
+        }
+    }
+
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
         string serverName,
