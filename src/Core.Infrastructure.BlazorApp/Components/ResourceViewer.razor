@@ -65,19 +65,42 @@
 
 @code {
     private bool _isSubscribed;
+    private DotNetObjectReference<ResourceViewer>? _dotNetRef;
 
     protected override void OnInitialized()
     {
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
         _isSubscribed = true;
+        _dotNetRef = DotNetObjectReference.Create(this);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Highlight code blocks after render
-        if (ViewModel.Content != null && ShouldHighlight(ViewModel.Content.MimeType))
+        if (ViewModel.Content != null)
         {
-            await JSRuntime.InvokeVoidAsync("prismInterop.highlightAll", "resource-viewer-container");
+            // Highlight code blocks
+            if (ShouldHighlight(ViewModel.Content.MimeType))
+            {
+                await JSRuntime.InvokeVoidAsync("prismInterop.highlightAll", "resource-viewer-container");
+            }
+
+            // Set up resource link interception for markdown content
+            if (IsMarkdown(ViewModel.Content.MimeType))
+            {
+                await JSRuntime.InvokeVoidAsync("resourceLinkInterop.setupLinkInterception", "resource-viewer-container", _dotNetRef);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when a resource link is clicked.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnResourceLinkClick(string resourceUri)
+    {
+        if (!string.IsNullOrEmpty(resourceUri))
+        {
+            await ViewModel.NavigateToResourceAsync(resourceUri);
         }
     }
 
@@ -105,6 +128,12 @@
         return $"Resource: {ViewModel.Resource.Name}";
     }
 
+    private bool IsMarkdown(string? mimeType)
+    {
+        if (string.IsNullOrEmpty(mimeType)) return false;
+        return mimeType == "text/markdown" || mimeType.EndsWith("/markdown");
+    }
+
     private RenderFragment RenderContent(McpResourceContent content)
     {
         var mimeType = content.MimeType ?? "application/octet-stream";
@@ -114,7 +143,7 @@
             // Check if it's text content
             if (!string.IsNullOrEmpty(content.Text))
             {
-                RenderTextContent(builder, content.Text, mimeType);
+                RenderTextContent(builder, content.Text, mimeType, content.Uri);
             }
             // Check if it's binary content
             else if (!string.IsNullOrEmpty(content.Blob))
@@ -131,12 +160,25 @@
         };
     }
 
-    private void RenderTextContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, string text, string mimeType)
+    private void RenderTextContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, string text, string mimeType, string contentUri)
     {
-        // Markdown rendering
+        // Markdown rendering with link transformation
         if (mimeType == "text/markdown" || mimeType.EndsWith("/markdown"))
         {
-            var html = MarkdownRenderer.RenderToHtml(text);
+            // Use the current resource URI and page base path for link transformation
+            var currentResourceUri = ViewModel.CurrentResourceUri ?? contentUri;
+            var pageBasePath = ViewModel.PageBasePath;
+
+            string html;
+            if (!string.IsNullOrEmpty(currentResourceUri) && !string.IsNullOrEmpty(pageBasePath))
+            {
+                html = MarkdownRenderer.RenderToHtml(text, currentResourceUri, pageBasePath);
+            }
+            else
+            {
+                html = MarkdownRenderer.RenderToHtml(text);
+            }
+
             builder.OpenElement(0, "div");
             builder.AddAttribute(1, "class", "markdown-content p-3");
             builder.AddMarkupContent(2, html);
@@ -351,5 +393,6 @@
             ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _isSubscribed = false;
         }
+        _dotNetRef?.Dispose();
     }
 }

@@ -253,4 +253,194 @@ public class MarkdownRendererTests
         // Assert
         result.Should().Contain("<br />");
     }
+
+    // Link transformation tests
+
+    [Fact(DisplayName = "MDR-016: ResolveRelativeUri should resolve simple relative path")]
+    public void MDR016()
+    {
+        // Arrange
+        var link = "features.md";
+        var baseUri = "demo://resource/architecture.md";
+
+        // Act
+        var result = MarkdownRenderer.ResolveRelativeUri(link, baseUri);
+
+        // Assert
+        result.Should().Be("demo://resource/features.md");
+    }
+
+    [Fact(DisplayName = "MDR-017: ResolveRelativeUri should resolve parent directory navigation")]
+    public void MDR017()
+    {
+        // Arrange
+        var link = "../features.md";
+        var baseUri = "demo://resource/docs/architecture.md";
+
+        // Act
+        var result = MarkdownRenderer.ResolveRelativeUri(link, baseUri);
+
+        // Assert
+        result.Should().Be("demo://resource/features.md");
+    }
+
+    [Fact(DisplayName = "MDR-018: ResolveRelativeUri should return absolute URI unchanged")]
+    public void MDR018()
+    {
+        // Arrange
+        var link = "https://google.com";
+        var baseUri = "demo://resource/architecture.md";
+
+        // Act
+        var result = MarkdownRenderer.ResolveRelativeUri(link, baseUri);
+
+        // Assert
+        result.Should().Be("https://google.com");
+    }
+
+    [Fact(DisplayName = "MDR-019: ResolveRelativeUri should return null for empty inputs")]
+    public void MDR019()
+    {
+        // Act & Assert
+        MarkdownRenderer.ResolveRelativeUri("", "demo://resource/test.md").Should().BeNull();
+        MarkdownRenderer.ResolveRelativeUri("features.md", "").Should().BeNull();
+    }
+
+    [Fact(DisplayName = "MDR-020: RenderToHtml with context should transform relative links")]
+    public void MDR020()
+    {
+        // Arrange
+        var markdown = "[Features](features.md)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"/mcp-servers/everything?resource=demo%3A%2F%2Fresource%2Ffeatures.md\"");
+        result.Should().Contain("data-resource-link=\"true\"");
+        result.Should().Contain(">Features</a>");
+    }
+
+    [Fact(DisplayName = "MDR-021: RenderToHtml with context should not transform external links")]
+    public void MDR021()
+    {
+        // Arrange
+        var markdown = "[Google](https://google.com)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"https://google.com\"");
+        result.Should().NotContain("data-resource-link");
+    }
+
+    [Fact(DisplayName = "MDR-022: RenderToHtml with context should not transform anchor links")]
+    public void MDR022()
+    {
+        // Arrange
+        var markdown = "[Section](#section)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"#section\"");
+        result.Should().NotContain("data-resource-link");
+    }
+
+    [Fact(DisplayName = "MDR-023: RenderToHtml with context should not transform mailto links")]
+    public void MDR023()
+    {
+        // Arrange
+        var markdown = "[Email](mailto:test@example.com)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"mailto:test@example.com\"");
+        result.Should().NotContain("data-resource-link");
+    }
+
+    [Fact(DisplayName = "MDR-024: RenderToHtml with context should transform parent path links")]
+    public void MDR024()
+    {
+        // Arrange
+        var markdown = "[Intro](../intro.md)";
+        var currentUri = "demo://resource/docs/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"/mcp-servers/everything?resource=demo%3A%2F%2Fresource%2Fintro.md\"");
+        result.Should().Contain("data-resource-link=\"true\"");
+    }
+
+    [Fact(DisplayName = "MDR-025: RenderToHtml with context should handle images normally")]
+    public void MDR025()
+    {
+        // Arrange
+        var markdown = "![Logo](logo.png)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("<img");
+        result.Should().Contain("src=\"logo.png\"");
+        result.Should().NotContain("data-resource-link");
+    }
+
+    [Fact(DisplayName = "MDR-026: RenderToHtml without context should not transform links")]
+    public void MDR026()
+    {
+        // Arrange
+        var markdown = "[Features](features.md)";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown);
+
+        // Assert
+        result.Should().Contain("href=\"features.md\"");
+        result.Should().NotContain("data-resource-link");
+    }
+
+    [Fact(DisplayName = "MDR-027: RenderToHtml with context should return empty for null input")]
+    public void MDR027()
+    {
+        // Act
+        var result = _sut.RenderToHtml(null!, "demo://resource/test.md", "/mcp-servers/test");
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "MDR-028: RenderToHtml with context should transform same-scheme absolute URIs")]
+    public void MDR028()
+    {
+        // Arrange
+        var markdown = "[Other](demo://resource/other.md)";
+        var currentUri = "demo://resource/architecture.md";
+        var basePath = "/mcp-servers/everything";
+
+        // Act
+        var result = _sut.RenderToHtml(markdown, currentUri, basePath);
+
+        // Assert
+        result.Should().Contain("href=\"/mcp-servers/everything?resource=demo%3A%2F%2Fresource%2Fother.md\"");
+        result.Should().Contain("data-resource-link=\"true\"");
+    }
 }

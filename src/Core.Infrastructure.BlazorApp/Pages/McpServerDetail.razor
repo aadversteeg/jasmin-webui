@@ -2,12 +2,15 @@
 @page "/mcp-servers/{ServerName}/{TabName}"
 @inherits MvvmComponentBase<ServerDetailViewModel>
 @using Core.Application.McpServers
+@using System.Web
 @inject INavigationService NavigationService
+@inject NavigationManager NavManager
 @inject SidePanelViewModel SidePanelVM
 @inject LeftPanelViewModel LeftPanelVM
 @inject ToolInvocationViewModel ToolInvocationVM
 @inject PromptInvocationViewModel PromptInvocationVM
 @inject ResourceViewerViewModel ResourceViewerVM
+@implements IDisposable
 
 <PageTitle>@ServerName - Jasmin</PageTitle>
 
@@ -93,10 +96,18 @@
     [Parameter]
     public string? TabName { get; set; }
 
+    private bool _isSubscribed;
+    private bool _isHandlingLocationChange;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         NavigationService.SetPageContext(SidePanelContentType.ServerDetail, ServerName);
+
+        // Subscribe to resource changes to update URL
+        ResourceViewerVM.ResourceChanged += OnResourceChanged;
+        NavManager.LocationChanged += OnLocationChanged;
+        _isSubscribed = true;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -106,6 +117,102 @@
         ViewModel.SetActiveTab(TabName);
         NavigationService.SetPageContext(SidePanelContentType.ServerDetail, ServerName);
         await ViewModel.InitializeDataAsync();
+
+        // Check for resource query parameter (deep linking)
+        await CheckForResourceQueryParam();
+    }
+
+    private async Task CheckForResourceQueryParam()
+    {
+        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+        var resourceValue = query["resource"];
+
+        if (!string.IsNullOrEmpty(resourceValue) && !ResourceViewerVM.IsOpen)
+        {
+            var resourceUri = Uri.UnescapeDataString(resourceValue);
+            // Open the resource viewer with the deep-linked resource
+            await ResourceViewerVM.OpenByUriAsync(
+                resourceUri,
+                ServerName,
+                ViewModel.ServerUrl ?? string.Empty,
+                GetPageBasePath(),
+                raiseEvent: false); // Don't raise event since we're syncing from URL
+        }
+    }
+
+    private void OnResourceChanged(object? sender, ResourceChangedEventArgs e)
+    {
+        if (_isHandlingLocationChange)
+            return;
+
+        // Update URL based on resource state
+        var basePath = GetPageBasePath();
+        string newUrl;
+
+        if (e.ResourceUri != null)
+        {
+            // Resource opened - add query param
+            var encodedUri = Uri.EscapeDataString(e.ResourceUri);
+            newUrl = $"{basePath}?resource={encodedUri}";
+        }
+        else
+        {
+            // Resource closed - remove query param
+            newUrl = basePath;
+        }
+
+        // Navigate without forcing a page reload
+        NavManager.NavigateTo(newUrl, forceLoad: false);
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Check if resource param changed (browser back/forward)
+        var uri = NavManager.ToAbsoluteUri(e.Location);
+        var query = HttpUtility.ParseQueryString(uri.Query);
+        var resourceValue = query["resource"];
+
+        _isHandlingLocationChange = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(resourceValue))
+            {
+                var resourceUri = Uri.UnescapeDataString(resourceValue);
+                // Check if we need to navigate to a different resource
+                if (!ResourceViewerVM.IsOpen || ResourceViewerVM.CurrentResourceUri != resourceUri)
+                {
+                    await ResourceViewerVM.OpenByUriAsync(
+                        resourceUri,
+                        ServerName,
+                        ViewModel.ServerUrl ?? string.Empty,
+                        GetPageBasePath(),
+                        raiseEvent: false);
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            else if (ResourceViewerVM.IsOpen)
+            {
+                // No resource param but viewer is open - close it
+                await ResourceViewerVM.CloseAsync(raiseEvent: false);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        finally
+        {
+            _isHandlingLocationChange = false;
+        }
+    }
+
+    private string GetPageBasePath()
+    {
+        // Build the base path without query params
+        var path = $"/mcp-servers/{ServerName}";
+        if (!string.IsNullOrEmpty(TabName))
+        {
+            path += $"/{TabName}";
+        }
+        return path;
     }
 
     private void NavigateHome()
@@ -127,6 +234,21 @@
 
     private async Task HandleViewResource(McpServerResource resource)
     {
-        await ResourceViewerVM.OpenAsync(resource, ServerName, ViewModel.ServerUrl);
+        await ResourceViewerVM.OpenAsync(
+            resource,
+            ServerName,
+            ViewModel.ServerUrl ?? string.Empty,
+            GetPageBasePath());
+    }
+
+    public new void Dispose()
+    {
+        if (_isSubscribed)
+        {
+            ResourceViewerVM.ResourceChanged -= OnResourceChanged;
+            NavManager.LocationChanged -= OnLocationChanged;
+            _isSubscribed = false;
+        }
+        base.Dispose();
     }
 }

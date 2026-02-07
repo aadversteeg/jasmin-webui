@@ -62,3 +62,52 @@ window.prismInterop = {
         return 'language-plaintext';
     }
 };
+
+// Resource link interception helpers
+window.resourceLinkInterop = {
+    /**
+     * Sets up click interception for resource links within a container.
+     * Links with data-resource-link="true" will trigger a callback to Blazor.
+     * @param {string} containerId - The ID of the container element
+     * @param {object} dotNetRef - The DotNetObjectReference for callbacks
+     */
+    setupLinkInterception: function(containerId, dotNetRef) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        // Find all resource links
+        const resourceLinks = container.querySelectorAll('a[data-resource-link="true"]');
+
+        resourceLinks.forEach(link => {
+            // Avoid adding multiple listeners
+            if (link.dataset.listenerAttached) return;
+            link.dataset.listenerAttached = 'true';
+
+            link.addEventListener('click', async function(e) {
+                // Allow modifier keys to work (open in new tab, etc.)
+                if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                    return; // Let the browser handle it
+                }
+
+                e.preventDefault();
+
+                // Extract the resource URI from the href
+                const href = link.getAttribute('href');
+                if (!href) return;
+
+                try {
+                    const url = new URL(href, window.location.origin);
+                    const resourceParam = url.searchParams.get('resource');
+
+                    if (resourceParam) {
+                        // Decode the resource URI and call back to Blazor
+                        const resourceUri = decodeURIComponent(resourceParam);
+                        await dotNetRef.invokeMethodAsync('OnResourceLinkClick', resourceUri);
+                    }
+                } catch (error) {
+                    console.error('Error handling resource link click:', error);
+                }
+            });
+        });
+    }
+};
