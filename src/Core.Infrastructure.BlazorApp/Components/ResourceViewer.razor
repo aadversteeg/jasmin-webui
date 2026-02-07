@@ -1,0 +1,355 @@
+@using Core.Application.McpServers
+@using Core.Infrastructure.BlazorApp.Services
+@using Core.Infrastructure.BlazorApp.ViewModels
+@using Microsoft.JSInterop
+@inject ResourceViewerViewModel ViewModel
+@inject IMarkdownRenderer MarkdownRenderer
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+@if (ViewModel.IsOpen)
+{
+    <ModalDialog Title="@GetDialogTitle()"
+                 IsOpen="true"
+                 Width="90vw"
+                 Height="90vh"
+                 OnClose="HandleClose">
+        <div class="resource-viewer-container" id="resource-viewer-container">
+            @if (ViewModel.IsStartingInstance)
+            {
+                <div class="loading-overlay">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Starting...</span>
+                    </div>
+                    <p class="mt-2">Starting server instance...</p>
+                </div>
+            }
+            else if (ViewModel.IsLoading)
+            {
+                <div class="loading-overlay">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading resource...</p>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger m-3">
+                    <strong>Error:</strong> @ViewModel.ErrorMessage
+                    <div class="mt-2">
+                        <button class="btn btn-outline-primary btn-sm" @onclick="HandleRetry">
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            }
+            else if (ViewModel.Content != null)
+            {
+                <div class="resource-content">
+                    @RenderContent(ViewModel.Content)
+                </div>
+            }
+            else
+            {
+                <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                    <div class="spinner-border text-secondary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Preparing resource...</p>
+                </div>
+            }
+        </div>
+    </ModalDialog>
+}
+
+@code {
+    private bool _isSubscribed;
+
+    protected override void OnInitialized()
+    {
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _isSubscribed = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Highlight code blocks after render
+        if (ViewModel.Content != null && ShouldHighlight(ViewModel.Content.MimeType))
+        {
+            await JSRuntime.InvokeVoidAsync("prismInterop.highlightAll", "resource-viewer-container");
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleClose()
+    {
+        await ViewModel.CloseAsync();
+    }
+
+    private async Task HandleRetry()
+    {
+        await ViewModel.RetryAsync();
+    }
+
+    private string GetDialogTitle()
+    {
+        if (ViewModel.Resource == null)
+        {
+            return "Resource Viewer";
+        }
+        return $"Resource: {ViewModel.Resource.Name}";
+    }
+
+    private RenderFragment RenderContent(McpResourceContent content)
+    {
+        var mimeType = content.MimeType ?? "application/octet-stream";
+
+        return builder =>
+        {
+            // Check if it's text content
+            if (!string.IsNullOrEmpty(content.Text))
+            {
+                RenderTextContent(builder, content.Text, mimeType);
+            }
+            // Check if it's binary content
+            else if (!string.IsNullOrEmpty(content.Blob))
+            {
+                RenderBinaryContent(builder, content.Blob, mimeType, content.Uri);
+            }
+            else
+            {
+                builder.OpenElement(0, "div");
+                builder.AddAttribute(1, "class", "alert alert-warning m-3");
+                builder.AddContent(2, "No content available for this resource.");
+                builder.CloseElement();
+            }
+        };
+    }
+
+    private void RenderTextContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, string text, string mimeType)
+    {
+        // Markdown rendering
+        if (mimeType == "text/markdown" || mimeType.EndsWith("/markdown"))
+        {
+            var html = MarkdownRenderer.RenderToHtml(text);
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "markdown-content p-3");
+            builder.AddMarkupContent(2, html);
+            builder.CloseElement();
+            return;
+        }
+
+        // HTML rendering (sandboxed iframe)
+        if (mimeType == "text/html" || mimeType.EndsWith("/html"))
+        {
+            builder.OpenElement(0, "iframe");
+            builder.AddAttribute(1, "class", "html-iframe");
+            builder.AddAttribute(2, "sandbox", "allow-same-origin");
+            builder.AddAttribute(3, "srcdoc", text);
+            builder.CloseElement();
+            return;
+        }
+
+        // JSON rendering (formatted + highlighted)
+        if (mimeType == "application/json" || mimeType.EndsWith("/json"))
+        {
+            var formatted = FormatJson(text);
+            builder.OpenElement(0, "pre");
+            builder.AddAttribute(1, "class", "code-content m-0");
+            builder.OpenElement(2, "code");
+            builder.AddAttribute(3, "class", "language-json");
+            builder.AddContent(4, formatted);
+            builder.CloseElement();
+            builder.CloseElement();
+            return;
+        }
+
+        // Code highlighting for known types
+        if (ShouldHighlight(mimeType))
+        {
+            var languageClass = GetPrismLanguageClass(mimeType);
+            builder.OpenElement(0, "pre");
+            builder.AddAttribute(1, "class", "code-content m-0");
+            builder.OpenElement(2, "code");
+            builder.AddAttribute(3, "class", languageClass);
+            builder.AddContent(4, text);
+            builder.CloseElement();
+            builder.CloseElement();
+            return;
+        }
+
+        // Plain text
+        builder.OpenElement(0, "pre");
+        builder.AddAttribute(1, "class", "text-content m-0 p-3");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    }
+
+    private void RenderBinaryContent(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, string blob, string mimeType, string uri)
+    {
+        // Image rendering
+        if (mimeType.StartsWith("image/"))
+        {
+            var dataUri = $"data:{mimeType};base64,{blob}";
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "image-content p-3 text-center");
+            builder.OpenElement(2, "img");
+            builder.AddAttribute(3, "src", dataUri);
+            builder.AddAttribute(4, "alt", uri);
+            builder.AddAttribute(5, "class", "img-fluid");
+            builder.CloseElement();
+            builder.CloseElement();
+            return;
+        }
+
+        // Binary preview (hex dump for small content, download for large)
+        var bytes = Convert.FromBase64String(blob);
+        var size = bytes.Length;
+        var sizeDisplay = FormatSize(size);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "binary-content p-3");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "d-flex justify-content-between align-items-center mb-3");
+        builder.OpenElement(4, "span");
+        builder.AddContent(5, $"Binary content: {sizeDisplay} ({mimeType})");
+        builder.CloseElement();
+
+        // Download button
+        var downloadUri = $"data:{mimeType};base64,{blob}";
+        var fileName = System.IO.Path.GetFileName(uri) ?? "resource";
+        builder.OpenElement(6, "a");
+        builder.AddAttribute(7, "href", downloadUri);
+        builder.AddAttribute(8, "download", fileName);
+        builder.AddAttribute(9, "class", "btn btn-outline-primary btn-sm");
+        builder.AddContent(10, "Download");
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        // Show hex preview for small files
+        if (size <= 1024)
+        {
+            var hexDump = GetHexDump(bytes);
+            builder.OpenElement(11, "pre");
+            builder.AddAttribute(12, "class", "hex-content m-0");
+            builder.AddContent(13, hexDump);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(11, "p");
+            builder.AddAttribute(12, "class", "text-muted");
+            builder.AddContent(13, "Binary content too large to preview. Click Download to save the file.");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private bool ShouldHighlight(string? mimeType)
+    {
+        if (string.IsNullOrEmpty(mimeType)) return false;
+
+        return mimeType switch
+        {
+            "application/json" => true,
+            "text/javascript" or "application/javascript" => true,
+            "text/css" => true,
+            "text/xml" or "application/xml" => true,
+            _ when mimeType.StartsWith("text/x-") => true,
+            _ => false
+        };
+    }
+
+    private string GetPrismLanguageClass(string? mimeType)
+    {
+        if (string.IsNullOrEmpty(mimeType)) return "language-plaintext";
+
+        return mimeType switch
+        {
+            "application/json" => "language-json",
+            "text/javascript" or "application/javascript" => "language-javascript",
+            "text/css" => "language-css",
+            "text/xml" or "application/xml" => "language-markup",
+            "text/x-csharp" => "language-csharp",
+            "text/x-python" => "language-python",
+            _ when mimeType.StartsWith("text/x-") => "language-" + mimeType[7..],
+            _ => "language-plaintext"
+        };
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(
+                doc.RootElement,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private string GetHexDump(byte[] bytes)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < bytes.Length; i += 16)
+        {
+            sb.Append($"{i:X8}  ");
+
+            // Hex bytes
+            for (int j = 0; j < 16; j++)
+            {
+                if (i + j < bytes.Length)
+                    sb.Append($"{bytes[i + j]:X2} ");
+                else
+                    sb.Append("   ");
+                if (j == 7) sb.Append(" ");
+            }
+
+            sb.Append(" |");
+
+            // ASCII representation
+            for (int j = 0; j < 16 && i + j < bytes.Length; j++)
+            {
+                var c = (char)bytes[i + j];
+                sb.Append(char.IsControl(c) ? '.' : c);
+            }
+
+            sb.AppendLine("|");
+        }
+        return sb.ToString();
+    }
+
+    public void Dispose()
+    {
+        if (_isSubscribed)
+        {
+            ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _isSubscribed = false;
+        }
+    }
+}

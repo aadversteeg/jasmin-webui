@@ -18,6 +18,7 @@
     </PackageReference>
     <PackageReference Include="Blazing.Mvvm" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Markdig" />
   </ItemGroup>
 
 </Project>

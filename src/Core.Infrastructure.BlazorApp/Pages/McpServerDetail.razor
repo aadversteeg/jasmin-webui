@@ -7,6 +7,7 @@
 @inject LeftPanelViewModel LeftPanelVM
 @inject ToolInvocationViewModel ToolInvocationVM
 @inject PromptInvocationViewModel PromptInvocationVM
+@inject ResourceViewerViewModel ResourceViewerVM
 
 <PageTitle>@ServerName - Jasmin</PageTitle>
 
@@ -71,7 +72,7 @@
                     <PromptsTab PromptsResult="@ViewModel.PromptsResult" OnInvokePrompt="HandleInvokePrompt" />
                     break;
                 case "resources":
-                    <ResourcesTab ResourcesResult="@ViewModel.ResourcesResult" />
+                    <ResourcesTab ResourcesResult="@ViewModel.ResourcesResult" OnViewResource="HandleViewResource" />
                     break;
                 default:
                     <ConfigurationTab Configuration="@ViewModel.Configuration" ServerName="@ServerName" />
@@ -83,6 +84,7 @@
 
 <ToolInvocationDialog />
 <PromptInvocationDialog />
+<ResourceViewer />
 
 @code {
     [Parameter]
@@ -121,5 +123,10 @@
     {
         var prompts = ViewModel.PromptsResult?.Items ?? Array.Empty<McpServerPrompt>();
         await PromptInvocationVM.OpenAsync(prompt, ServerName, ViewModel.ServerUrl, prompts);
+    }
+
+    private async Task HandleViewResource(McpServerResource resource)
+    {
+        await ResourceViewerVM.OpenAsync(resource, ServerName, ViewModel.ServerUrl);
     }
 }

@@ -31,6 +31,14 @@
                     Description="@resource.Description"
                     IsExpanded="@_viewModel.IsExpanded(resource.Name)"
                     OnToggle="() => ToggleExpand(resource.Name)">
+                    <HeaderActions>
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="() => HandleView(resource)"
+                                @onclick:stopPropagation="true">
+                            View
+                        </button>
+                    </HeaderActions>
+                    <ChildContent>
                     <table class="table table-sm table-bordered mb-0">
                         <tbody>
                             <tr>
@@ -46,6 +54,7 @@
                             }
                         </tbody>
                     </table>
+                    </ChildContent>
                 </ExpandableItemCard>
             }
         </div>
@@ -68,6 +77,9 @@
 @code {
     [Parameter]
     public McpServerMetadataResult<McpServerResource>? ResourcesResult { get; set; }
+
+    [Parameter]
+    public EventCallback<McpServerResource> OnViewResource { get; set; }
 
     private readonly ExpandableItemsViewModel _viewModel = new();
 
@@ -92,6 +104,11 @@
     private void CollapseAll()
     {
         _viewModel.CollapseAll();
+    }
+
+    private async Task HandleView(McpServerResource resource)
+    {
+        await OnViewResource.InvokeAsync(resource);
     }
 
     public void Dispose()

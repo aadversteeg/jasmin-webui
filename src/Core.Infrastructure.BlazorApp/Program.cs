@@ -28,5 +28,7 @@ builder.Services.AddScoped<ServerDetailViewModel>();
 builder.Services.AddScoped<ConfirmationDialogViewModel>();
 builder.Services.AddScoped<ToolInvocationViewModel>();
 builder.Services.AddScoped<PromptInvocationViewModel>();
+builder.Services.AddScoped<ResourceViewerViewModel>();
+builder.Services.AddScoped<IMarkdownRenderer, MarkdownRenderer>();
 
 await builder.Build().RunAsync();

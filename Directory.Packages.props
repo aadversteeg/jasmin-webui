@@ -13,6 +13,8 @@
     <!-- MVVM -->
     <PackageVersion Include="Blazing.Mvvm" Version="3.2.0" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!-- Markdown -->
+    <PackageVersion Include="Markdig" Version="0.40.0" />
     <!-- Testing -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="xunit" Version="2.9.2" />

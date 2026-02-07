@@ -20,7 +20,9 @@ public record RequestResponseDto(
     ToolInvocationOutputDto? Output = null,
     string? PromptName = null,
     JsonElement? Arguments = null,
-    PromptOutputDto? PromptOutput = null);
+    PromptOutputDto? PromptOutput = null,
+    string? ResourceUri = null,
+    ResourceReadOutputDto? ResourceOutput = null);
 
 /// <summary>
 /// DTO for request error information.
@@ -68,3 +70,18 @@ public record PromptMessageContentDto(
     string? MimeType,
     string? Data,
     string? Uri);
+
+/// <summary>
+/// DTO for resource read output.
+/// </summary>
+public record ResourceReadOutputDto(
+    IReadOnlyList<ResourceContentDto> Contents);
+
+/// <summary>
+/// DTO for resource content.
+/// </summary>
+public record ResourceContentDto(
+    string Uri,
+    string? MimeType,
+    string? Text,
+    string? Blob);

@@ -12,4 +12,5 @@ public record CreateRequestDto(
     string? ToolName = null,
     JsonElement? Input = null,
     string? PromptName = null,
-    JsonElement? Arguments = null);
+    JsonElement? Arguments = null,
+    string? ResourceUri = null);

@@ -1,0 +1,150 @@
+.resource-viewer-container {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.resource-content {
+    flex: 1;
+    overflow: auto;
+    background: #fff;
+}
+
+/* Text content styles */
+.text-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #f8f9fa;
+}
+
+/* Code content with Prism highlighting */
+.code-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow: auto;
+}
+
+.code-content code {
+    background: transparent !important;
+    padding: 1rem !important;
+    display: block;
+}
+
+/* Markdown rendered content */
+.markdown-content {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child {
+    margin-top: 0;
+}
+
+.markdown-content p {
+    margin-bottom: 1rem;
+}
+
+.markdown-content pre {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.markdown-content code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+    background: #f0f0f0;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+.markdown-content pre code {
+    background: transparent;
+    padding: 0;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #dee2e6;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #6c757d;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.markdown-content th,
+.markdown-content td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+}
+
+.markdown-content th {
+    background: #f8f9fa;
+}
+
+/* HTML iframe content */
+.html-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+}
+
+/* Image content */
+.image-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: repeating-conic-gradient(#f0f0f0 0% 25%, #fff 0% 50%) 50% / 20px 20px;
+}
+
+.image-content img {
+    max-width: 100%;
+    max-height: calc(90vh - 150px);
+    object-fit: contain;
+}
+
+/* Binary content */
+.binary-content {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.hex-content {
+    font-size: 12px;
+    line-height: 1.4;
+    background: #f8f9fa;
+    padding: 1rem;
+    overflow-x: auto;
+}
