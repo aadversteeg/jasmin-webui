@@ -2,8 +2,10 @@ using System.Collections.ObjectModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Core.Application.Events;
 using Core.Application.McpServers;
 using Core.Application.Storage;
+using Core.Domain.Events;
 
 namespace Core.Infrastructure.BlazorApp.ViewModels;
 
@@ -14,6 +16,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
 {
     private readonly IToolInvocationService _invocationService;
     private readonly IApplicationStateService _appState;
+    private readonly IEventStreamService _eventStream;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -40,10 +43,12 @@ public partial class InstanceManagementViewModel : ViewModelBase
 
     public InstanceManagementViewModel(
         IToolInvocationService invocationService,
-        IApplicationStateService appState)
+        IApplicationStateService appState,
+        IEventStreamService eventStream)
     {
         _invocationService = invocationService;
         _appState = appState;
+        _eventStream = eventStream;
     }
 
     /// <summary>
@@ -56,6 +61,9 @@ public partial class InstanceManagementViewModel : ViewModelBase
         ErrorMessage = null;
         Instances.Clear();
         IsOpen = true;
+
+        // Subscribe to events for automatic updates
+        _eventStream.EventReceived += OnEventReceived;
 
         await RefreshAsync();
     }
@@ -193,6 +201,44 @@ public partial class InstanceManagementViewModel : ViewModelBase
     [RelayCommand]
     private void Close()
     {
+        // Unsubscribe from events
+        _eventStream.EventReceived -= OnEventReceived;
         IsOpen = false;
+    }
+
+    private void OnEventReceived(object? sender, McpServerEvent e)
+    {
+        // Only handle events for the current server
+        if (!string.Equals(e.ServerName, ServerName, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        switch (e.EventType)
+        {
+            case McpServerEventType.Started:
+                // Add new instance to the list
+                if (!string.IsNullOrEmpty(e.InstanceId))
+                {
+                    var existingInstance = Instances.FirstOrDefault(i => i.InstanceId == e.InstanceId);
+                    if (existingInstance == null)
+                    {
+                        Instances.Add(new McpServerInstance(e.InstanceId, e.ServerName, e.Timestamp));
+                    }
+                }
+                break;
+
+            case McpServerEventType.Stopped:
+                // Remove instance from the list
+                if (!string.IsNullOrEmpty(e.InstanceId))
+                {
+                    var instance = Instances.FirstOrDefault(i => i.InstanceId == e.InstanceId);
+                    if (instance != null)
+                    {
+                        Instances.Remove(instance);
+                    }
+                }
+                break;
+        }
     }
 }
