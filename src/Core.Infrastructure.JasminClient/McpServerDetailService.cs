@@ -85,7 +85,7 @@ public class McpServerDetailService : IMcpServerDetailService
             return new McpServerMetadataResult<McpServerTool>(
                 new List<McpServerTool>(),
                 null,
-                new List<McpServerMetadataError> { new("FETCH_ERROR", ex.Message) });
+                new List<McpServerMetadataError> { new("Client.FetchError", ex.Message) });
         }
     }
 
@@ -122,7 +122,7 @@ public class McpServerDetailService : IMcpServerDetailService
             return new McpServerMetadataResult<McpServerPrompt>(
                 new List<McpServerPrompt>(),
                 null,
-                new List<McpServerMetadataError> { new("FETCH_ERROR", ex.Message) });
+                new List<McpServerMetadataError> { new("Client.FetchError", ex.Message) });
         }
     }
 
@@ -159,7 +159,7 @@ public class McpServerDetailService : IMcpServerDetailService
             return new McpServerMetadataResult<McpServerResource>(
                 new List<McpServerResource>(),
                 null,
-                new List<McpServerMetadataError> { new("FETCH_ERROR", ex.Message) });
+                new List<McpServerMetadataError> { new("Client.FetchError", ex.Message) });
         }
     }
 
