@@ -38,7 +38,8 @@ public class UserPreferencesService : IUserPreferencesService
             {
                 PanelWidth = Math.Clamp(saved.PanelWidth, MinPanelWidth, MaxPanelWidth),
                 LeftPanelWidth = Math.Clamp(saved.LeftPanelWidth, MinPanelWidth, MaxPanelWidth),
-                ToolInvocationInputPanelWidthPercent = Math.Clamp(saved.ToolInvocationInputPanelWidthPercent, 20, 80)
+                ToolInvocationInputPanelWidthPercent = Math.Clamp(saved.ToolInvocationInputPanelWidthPercent, 20, 80),
+                InstanceManagementPanelWidthPercent = Math.Clamp(saved.InstanceManagementPanelWidthPercent, 20, 80)
             };
         }
         _isLoaded = true;
@@ -128,6 +129,13 @@ public class UserPreferencesService : IUserPreferencesService
     {
         get => _preferences.ToolInvocationHistoryMaxItems;
         set => UpdatePreference(p => p with { ToolInvocationHistoryMaxItems = Math.Clamp(value, 1, 100) });
+    }
+
+    // Instance management dialog
+    public int InstanceManagementPanelWidthPercent
+    {
+        get => _preferences.InstanceManagementPanelWidthPercent;
+        set => UpdatePreference(p => p with { InstanceManagementPanelWidthPercent = Math.Clamp(value, 20, 80) });
     }
 
     // Instance lifecycle preferences (per server)

@@ -27,6 +27,9 @@ public record UserPreferences
     public int ToolInvocationInputPanelWidthPercent { get; init; } = 33;
     public int ToolInvocationHistoryMaxItems { get; init; } = 20;
 
+    // Instance management dialog
+    public int InstanceManagementPanelWidthPercent { get; init; } = 33;
+
     // Instance lifecycle preferences (per server)
     // Key: serverName, Value: InstanceLifecycleMode as int
     public Dictionary<string, int> ServerInstanceLifecycleMode { get; init; } = new();

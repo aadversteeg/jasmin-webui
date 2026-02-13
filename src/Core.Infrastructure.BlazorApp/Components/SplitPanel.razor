@@ -1,0 +1,87 @@
+@inject IJSRuntime JS
+
+<div id="@ContainerId" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
+    @* Left Panel *@
+    <div class="split-panel left-panel @LeftPanelClass" style="width: @(_leftWidthPercent)%;">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+            @LeftHeader
+        </div>
+        <div class="panel-content">
+            @LeftContent
+        </div>
+    </div>
+
+    @* Resizer *@
+    <div class="split-resizer" @onmousedown="StartResize"></div>
+
+    @* Right Panel *@
+    <div class="split-panel right-panel @RightPanelClass" style="width: @(100 - _leftWidthPercent)%;">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+            @RightHeader
+        </div>
+        <div class="panel-content @RightContentClass">
+            @RightContent
+        </div>
+    </div>
+</div>
+
+@code {
+    private double _leftWidthPercent;
+
+    [Parameter, EditorRequired] public string ContainerId { get; set; } = "";
+    [Parameter] public RenderFragment? LeftHeader { get; set; }
+    [Parameter] public RenderFragment? LeftContent { get; set; }
+    [Parameter] public RenderFragment? RightHeader { get; set; }
+    [Parameter] public RenderFragment? RightContent { get; set; }
+    [Parameter] public double InitialLeftWidthPercent { get; set; } = 33;
+    [Parameter] public string? LeftPanelClass { get; set; }
+    [Parameter] public string? RightPanelClass { get; set; }
+    [Parameter] public string? RightContentClass { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnKeyDown { get; set; }
+    [Parameter] public EventCallback<double> OnWidthChanged { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _leftWidthPercent = InitialLeftWidthPercent;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        _leftWidthPercent = InitialLeftWidthPercent;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (OnKeyDown.HasDelegate)
+        {
+            await OnKeyDown.InvokeAsync(e);
+        }
+    }
+
+    private async Task StartResize(MouseEventArgs e)
+    {
+        await JS.InvokeVoidAsync("splitPanelResize.start",
+            DotNetObjectReference.Create(this),
+            ContainerId,
+            (int)e.ClientX,
+            _leftWidthPercent);
+    }
+
+    [JSInvokable]
+    public void UpdateWidthPercent(double newPercent)
+    {
+        _leftWidthPercent = Math.Clamp(newPercent, 20, 80);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task EndResize()
+    {
+        if (OnWidthChanged.HasDelegate)
+        {
+            await OnWidthChanged.InvokeAsync(_leftWidthPercent);
+        }
+    }
+}

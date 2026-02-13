@@ -48,6 +48,9 @@ public interface IUserPreferencesService
     int ToolInvocationInputPanelWidthPercent { get; set; }
     int ToolInvocationHistoryMaxItems { get; set; }
 
+    // Instance management dialog
+    int InstanceManagementPanelWidthPercent { get; set; }
+
     // Instance lifecycle preferences (per server)
 
     /// <summary>

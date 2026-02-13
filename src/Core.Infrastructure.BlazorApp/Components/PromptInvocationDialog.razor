@@ -4,7 +4,6 @@
 @using System.Text.Json
 @inherits Blazing.Mvvm.Components.MvvmComponentBase<PromptInvocationViewModel>
 @inject IUserPreferencesService UserPreferences
-@inject IJSRuntime JS
 
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@GetTitle()"
@@ -12,192 +11,186 @@
              Width="90vw"
              Height="90vh">
     <ChildContent>
-            <div id="prompt-invocation-split-container" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
-                @* Left Panel - Input *@
-                <div class="split-panel input-panel" style="width: @(_inputPanelWidthPercent)%;">
-                    <div class="panel-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">Arguments</h6>
-                        <div class="d-flex gap-2 align-items-center">
-                            @* History navigation *@
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-secondary"
-                                        disabled="@(!ViewModel.CanGoHistoryUp)"
-                                        @onclick="HandleHistoryUp"
-                                        title="Older history (Alt+Up)">
-                                    &#9650;
-                                </button>
-                                <button class="btn btn-outline-secondary"
-                                        disabled="@(!ViewModel.CanGoHistoryDown)"
-                                        @onclick="HandleHistoryDown"
-                                        title="Newer history (Alt+Down)">
-                                    &#9660;
-                                </button>
-                            </div>
-                            <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
-
-                            <div class="vr"></div>
-
-                            @* Clear buttons *@
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    @onclick="HandleClearDraft"
-                                    title="Clear arguments">
-                                Clear
-                            </button>
-                            @if (ViewModel.HistoryCount > 0)
-                            {
-                                <button class="btn btn-outline-danger btn-sm"
-                                        @onclick="HandleClearHistory"
-                                        title="Clear all history for this prompt">
-                                    Clear History
-                                </button>
-                            }
-
-                            <div class="vr"></div>
-
-                            @* View toggle and Invoke *@
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    @onclick="ToggleInputMode"
-                                    title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
-                                @(_isJsonMode ? "Form" : "JSON")
-                            </button>
-                            <button class="btn btn-primary btn-sm"
-                                    @onclick="HandleInvoke"
-                                    disabled="@(!CanInvoke())">
-                                @if (ViewModel.IsStartingInstance)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Starting...</span>
-                                }
-                                else if (ViewModel.IsInvoking)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Getting...</span>
-                                }
-                                else
-                                {
-                                    <span>Get Prompt</span>
-                                }
-                            </button>
-                        </div>
+        <SplitPanel ContainerId="prompt-invocation-split-container"
+                    InitialLeftWidthPercent="@_inputPanelWidthPercent"
+                    LeftPanelClass="input-panel"
+                    OnKeyDown="HandleKeyDown"
+                    OnWidthChanged="HandleWidthChanged">
+            <LeftHeader>
+                <h6 class="mb-0">Arguments</h6>
+                <div class="d-flex gap-2 align-items-center">
+                    @* History navigation *@
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary"
+                                disabled="@(!ViewModel.CanGoHistoryUp)"
+                                @onclick="HandleHistoryUp"
+                                title="Older history (Alt+Up)">
+                            &#9650;
+                        </button>
+                        <button class="btn btn-outline-secondary"
+                                disabled="@(!ViewModel.CanGoHistoryDown)"
+                                @onclick="HandleHistoryDown"
+                                title="Newer history (Alt+Down)">
+                            &#9660;
+                        </button>
                     </div>
-                    <div class="panel-content">
-                        <InstanceSelector Mode="@ViewModel.LifecycleMode"
-                                         ModeChanged="@OnLifecycleModeChanged"
-                                         SelectedInstanceId="@ViewModel.SelectedExistingInstanceId"
-                                         SelectedInstanceIdChanged="@OnSelectedInstanceChanged"
-                                         RunningInstances="@ViewModel.RunningInstances"
-                                         Disabled="@(ViewModel.IsInvoking || ViewModel.IsStartingInstance)" />
+                    <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
 
-                        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
+                    <div class="vr"></div>
+
+                    @* Clear buttons *@
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @onclick="HandleClearDraft"
+                            title="Clear arguments">
+                        Clear
+                    </button>
+                    @if (ViewModel.HistoryCount > 0)
+                    {
+                        <button class="btn btn-outline-danger btn-sm"
+                                @onclick="HandleClearHistory"
+                                title="Clear all history for this prompt">
+                            Clear History
+                        </button>
+                    }
+
+                    <div class="vr"></div>
+
+                    @* View toggle and Invoke *@
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @onclick="ToggleInputMode"
+                            title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                        @(_isJsonMode ? "Form" : "JSON")
+                    </button>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="HandleInvoke"
+                            disabled="@(!CanInvoke())">
+                        @if (ViewModel.IsStartingInstance)
                         {
-                            <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Starting...</span>
                         }
-
-                        @if (ViewModel.Prompt?.Arguments?.Count > 0)
+                        else if (ViewModel.IsInvoking)
                         {
-                            @if (_isJsonMode)
-                            {
-                                <textarea class="form-control font-monospace"
-                                          rows="20"
-                                          @bind="_jsonInputValue"
-                                          @bind:event="oninput"
-                                          placeholder="Enter JSON arguments..."></textarea>
-                                @if (!string.IsNullOrEmpty(_jsonParseError))
-                                {
-                                    <div class="text-danger small mt-1">@_jsonParseError</div>
-                                }
-                            }
-                            else
-                            {
-                                <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
-                                    @foreach (var arg in ViewModel.Prompt.Arguments)
-                                    {
-                                        <PromptArgumentInput Argument="arg"
-                                                            Value="@GetArgumentValue(arg.Name)"
-                                                            OnValueChanged="v => ViewModel.SetArgumentValue(arg.Name, v)" />
-                                    }
-                                </form>
-                            }
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Getting...</span>
                         }
                         else
                         {
-                            <p class="text-muted">This prompt has no arguments.</p>
+                            <span>Get Prompt</span>
                         }
-                    </div>
+                    </button>
                 </div>
+            </LeftHeader>
+            <LeftContent>
+                <InstanceSelector Mode="@ViewModel.LifecycleMode"
+                                 ModeChanged="@OnLifecycleModeChanged"
+                                 SelectedInstanceId="@ViewModel.SelectedExistingInstanceId"
+                                 SelectedInstanceIdChanged="@OnSelectedInstanceChanged"
+                                 RunningInstances="@ViewModel.RunningInstances"
+                                 Disabled="@(ViewModel.IsInvoking || ViewModel.IsStartingInstance)" />
 
-                @* Resizer *@
-                <div class="split-resizer" @onmousedown="StartResize"></div>
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
+                {
+                    <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
+                }
 
-                @* Right Panel - Output *@
-                <div class="split-panel output-panel" style="width: @(100 - _inputPanelWidthPercent)%;">
-                    <div class="panel-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">Output</h6>
-                        @{
-                            var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
-                        }
-                        @if (invokedAt.HasValue)
+                @if (ViewModel.Prompt?.Arguments?.Count > 0)
+                {
+                    @if (_isJsonMode)
+                    {
+                        <textarea class="form-control font-monospace"
+                                  rows="20"
+                                  @bind="_jsonInputValue"
+                                  @bind:event="oninput"
+                                  placeholder="Enter JSON arguments..."></textarea>
+                        @if (!string.IsNullOrEmpty(_jsonParseError))
                         {
-                            <span class="small text-muted">
-                                @invokedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff")
-                            </span>
+                            <div class="text-danger small mt-1">@_jsonParseError</div>
                         }
-                    </div>
-                    <div class="panel-content">
-                        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Output)
-                        {
-                            <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
-                        }
-                        else if (ViewModel.Result != null)
-                        {
-                            @if (!string.IsNullOrEmpty(ViewModel.Result.Description))
+                    }
+                    else
+                    {
+                        <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+                            @foreach (var arg in ViewModel.Prompt.Arguments)
                             {
-                                <div class="alert alert-info mb-3">
-                                    @ViewModel.Result.Description
-                                </div>
+                                <PromptArgumentInput Argument="arg"
+                                                    Value="@GetArgumentValue(arg.Name)"
+                                                    OnValueChanged="v => ViewModel.SetArgumentValue(arg.Name, v)" />
                             }
+                        </form>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">This prompt has no arguments.</p>
+                }
+            </LeftContent>
+            <RightHeader>
+                <h6 class="mb-0">Output</h6>
+                @{
+                    var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
+                }
+                @if (invokedAt.HasValue)
+                {
+                    <span class="small text-muted">
+                        @invokedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff")
+                    </span>
+                }
+            </RightHeader>
+            <RightContent>
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Output)
+                {
+                    <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
+                }
+                else if (ViewModel.Result != null)
+                {
+                    @if (!string.IsNullOrEmpty(ViewModel.Result.Description))
+                    {
+                        <div class="alert alert-info mb-3">
+                            @ViewModel.Result.Description
+                        </div>
+                    }
 
-                            <div class="output-container">
-                                @foreach (var message in ViewModel.Result.Messages)
+                    <div class="output-container">
+                        @foreach (var message in ViewModel.Result.Messages)
+                        {
+                            <div class="prompt-message mb-3">
+                                <div class="message-role small text-muted mb-1">
+                                    <strong>@message.Role</strong>
+                                </div>
+                                @if (message.Content.Type == "text" && !string.IsNullOrEmpty(message.Content.Text))
                                 {
-                                    <div class="prompt-message mb-3">
-                                        <div class="message-role small text-muted mb-1">
-                                            <strong>@message.Role</strong>
-                                        </div>
-                                        @if (message.Content.Type == "text" && !string.IsNullOrEmpty(message.Content.Text))
-                                        {
-                                            <pre class="output-text">@message.Content.Text</pre>
-                                        }
-                                        else if (message.Content.Type == "image" && !string.IsNullOrEmpty(message.Content.Data))
-                                        {
-                                            <div class="output-image">
-                                                <img src="data:@(message.Content.MimeType ?? "image/png");base64,@message.Content.Data" alt="Prompt output" />
-                                            </div>
-                                        }
-                                        else if (message.Content.Type == "resource" && !string.IsNullOrEmpty(message.Content.Uri))
-                                        {
-                                            <div class="output-resource">
-                                                <a href="@message.Content.Uri" target="_blank" rel="noopener noreferrer">@message.Content.Uri</a>
-                                            </div>
-                                        }
+                                    <pre class="output-text">@message.Content.Text</pre>
+                                }
+                                else if (message.Content.Type == "image" && !string.IsNullOrEmpty(message.Content.Data))
+                                {
+                                    <div class="output-image">
+                                        <img src="data:@(message.Content.MimeType ?? "image/png");base64,@message.Content.Data" alt="Prompt output" />
+                                    </div>
+                                }
+                                else if (message.Content.Type == "resource" && !string.IsNullOrEmpty(message.Content.Uri))
+                                {
+                                    <div class="output-resource">
+                                        <a href="@message.Content.Uri" target="_blank" rel="noopener noreferrer">@message.Content.Uri</a>
                                     </div>
                                 }
                             </div>
                         }
-                        else if (ViewModel.IsInvoking)
-                        {
-                            <div class="text-center py-4">
-                                <div class="spinner-border text-secondary" role="status"></div>
-                                <p class="mt-2 text-muted">Getting prompt...</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted">Click "Get Prompt" to run the prompt and see results here.</p>
-                        }
                     </div>
-                </div>
-            </div>
+                }
+                else if (ViewModel.IsInvoking)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                        <p class="mt-2 text-muted">Getting prompt...</p>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">Click "Get Prompt" to run the prompt and see results here.</p>
+                }
+            </RightContent>
+        </SplitPanel>
     </ChildContent>
 
     <FooterContent>
@@ -225,7 +218,6 @@
 
 @code {
     private double _inputPanelWidthPercent = 33;
-    private double _startWidthPercent;
     private bool _isJsonMode = false;
     private string _jsonInputValue = "{}";
     private string? _jsonParseError = null;
@@ -235,6 +227,12 @@
         await base.OnInitializedAsync();
         await UserPreferences.LoadAsync();
         _inputPanelWidthPercent = UserPreferences.ToolInvocationInputPanelWidthPercent;
+    }
+
+    private void HandleWidthChanged(double newPercent)
+    {
+        _inputPanelWidthPercent = newPercent;
+        UserPreferences.ToolInvocationInputPanelWidthPercent = (int)newPercent;
     }
 
     private void ToggleInputMode()
@@ -430,28 +428,5 @@
                 }
                 break;
         }
-    }
-
-    private async Task StartResize(MouseEventArgs e)
-    {
-        _startWidthPercent = _inputPanelWidthPercent;
-        await JS.InvokeVoidAsync("splitPanelResize.start",
-            DotNetObjectReference.Create(this),
-            "prompt-invocation-split-container",
-            (int)e.ClientX,
-            _inputPanelWidthPercent);
-    }
-
-    [JSInvokable]
-    public void UpdateWidthPercent(double newPercent)
-    {
-        _inputPanelWidthPercent = Math.Clamp(newPercent, 20, 80);
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void EndResize()
-    {
-        UserPreferences.ToolInvocationInputPanelWidthPercent = (int)_inputPanelWidthPercent;
     }
 }

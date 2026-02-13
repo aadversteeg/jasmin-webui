@@ -10,13 +10,14 @@ using Core.Domain.Events;
 namespace Core.Infrastructure.BlazorApp.ViewModels;
 
 /// <summary>
-/// ViewModel for the instance management dialog.
+/// ViewModel for the instance management dialog with log viewer.
 /// </summary>
 public partial class InstanceManagementViewModel : ViewModelBase
 {
     private readonly IToolInvocationService _invocationService;
     private readonly IApplicationStateService _appState;
     private readonly IEventStreamService _eventStream;
+    private readonly IInstanceLogService _logService;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -36,24 +37,45 @@ public partial class InstanceManagementViewModel : ViewModelBase
     [ObservableProperty]
     private string? _stoppingInstanceId;
 
+    [ObservableProperty]
+    private string? _selectedInstanceId;
+
+    [ObservableProperty]
+    private bool _isLogStreamConnected;
+
+    [ObservableProperty]
+    private string? _logStreamError;
+
     /// <summary>
     /// The list of running instances.
     /// </summary>
     public ObservableCollection<McpServerInstance> Instances { get; } = new();
 
     /// <summary>
+    /// The log entries for the selected instance.
+    /// </summary>
+    public ObservableCollection<InstanceLogEntry> LogEntries { get; } = new();
+
+    /// <summary>
     /// Event raised when instances are updated via SSE events.
     /// </summary>
     public event Action? InstancesChanged;
 
+    /// <summary>
+    /// Event raised when new log entries are added (for auto-scroll in the UI).
+    /// </summary>
+    public event Action? LogEntriesChanged;
+
     public InstanceManagementViewModel(
         IToolInvocationService invocationService,
         IApplicationStateService appState,
-        IEventStreamService eventStream)
+        IEventStreamService eventStream,
+        IInstanceLogService logService)
     {
         _invocationService = invocationService;
         _appState = appState;
         _eventStream = eventStream;
+        _logService = logService;
     }
 
     /// <summary>
@@ -64,6 +86,8 @@ public partial class InstanceManagementViewModel : ViewModelBase
     {
         ServerName = serverName;
         ErrorMessage = null;
+        SelectedInstanceId = null;
+        LogEntries.Clear();
         Instances.Clear();
         IsOpen = true;
 
@@ -184,6 +208,14 @@ public partial class InstanceManagementViewModel : ViewModelBase
                 {
                     Instances.Remove(instance);
                 }
+
+                // If the stopped instance was selected, clear selection and disconnect log stream
+                if (instanceId == SelectedInstanceId)
+                {
+                    await DisconnectLogStreamAsync();
+                    SelectedInstanceId = null;
+                    LogEntries.Clear();
+                }
             }
             else
             {
@@ -201,14 +233,78 @@ public partial class InstanceManagementViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Selects an instance and starts streaming its logs.
+    /// </summary>
+    [RelayCommand]
+    private async Task SelectInstanceAsync(string instanceId)
+    {
+        if (SelectedInstanceId == instanceId)
+        {
+            return;
+        }
+
+        // Disconnect previous log stream
+        await DisconnectLogStreamAsync();
+
+        SelectedInstanceId = instanceId;
+        LogEntries.Clear();
+        LogStreamError = null;
+
+        if (!string.IsNullOrEmpty(instanceId))
+        {
+            await ConnectLogStreamAsync(instanceId);
+        }
+    }
+
+    /// <summary>
     /// Closes the dialog.
     /// </summary>
     [RelayCommand]
-    private void Close()
+    private async Task CloseAsync()
     {
         // Unsubscribe from events
         _eventStream.EventReceived -= OnEventReceived;
+
+        await DisconnectLogStreamAsync();
+        SelectedInstanceId = null;
+        LogEntries.Clear();
         IsOpen = false;
+    }
+
+    private async Task ConnectLogStreamAsync(string instanceId)
+    {
+        await _appState.LoadAsync();
+        var serverUrl = _appState.ServerUrl;
+        if (string.IsNullOrEmpty(serverUrl))
+        {
+            return;
+        }
+
+        _logService.LogEntryReceived += OnLogEntryReceived;
+        _logService.ErrorOccurred += OnLogErrorOccurred;
+
+        await _logService.StartStreamAsync(serverUrl, ServerName, instanceId, afterLine: 0);
+    }
+
+    private async Task DisconnectLogStreamAsync()
+    {
+        _logService.LogEntryReceived -= OnLogEntryReceived;
+        _logService.ErrorOccurred -= OnLogErrorOccurred;
+
+        await _logService.StopStreamAsync();
+        IsLogStreamConnected = false;
+    }
+
+    private void OnLogEntryReceived(object? sender, InstanceLogEntry entry)
+    {
+        LogEntries.Add(entry);
+        IsLogStreamConnected = true;
+        LogEntriesChanged?.Invoke();
+    }
+
+    private void OnLogErrorOccurred(object? sender, string error)
+    {
+        LogStreamError = error;
     }
 
     private void OnEventReceived(object? sender, McpServerEvent e)
@@ -242,6 +338,14 @@ public partial class InstanceManagementViewModel : ViewModelBase
                     if (instance != null)
                     {
                         Instances.Remove(instance);
+
+                        if (e.InstanceId == SelectedInstanceId)
+                        {
+                            _ = DisconnectLogStreamAsync();
+                            SelectedInstanceId = null;
+                            LogEntries.Clear();
+                        }
+
                         InstancesChanged?.Invoke();
                     }
                 }

@@ -1,13 +1,76 @@
 .instance-list {
-    max-height: 400px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .instance-card {
+    padding: 8px 12px;
     border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.instance-card:hover {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.04);
+}
+
+.instance-card.selected {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
 }
 
 .instance-id {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.instance-info {
+    min-width: 0;
+    flex: 1;
+    margin-right: 8px;
+}
+
+::deep .log-panel-content {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.log-entries {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #1e1e1e;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    padding: 8px;
+}
+
+.log-line {
+    display: flex;
+    gap: 8px;
+    padding: 1px 4px;
+}
+
+.log-line:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.log-timestamp {
+    color: #6a9955;
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.log-text {
+    color: #d4d4d4;
+    white-space: pre-wrap;
+    word-break: break-all;
 }

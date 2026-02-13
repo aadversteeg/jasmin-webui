@@ -1,77 +1,141 @@
 @using Core.Application.McpServers
+@using Core.Application.Events
+@using Core.Application.Storage
 @using Core.Infrastructure.BlazorApp.ViewModels
 @inherits Blazing.Mvvm.Components.MvvmComponentBase<InstanceManagementViewModel>
+@inject IJSRuntime JS
+@inject IUserPreferencesService UserPreferences
 
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@GetTitle()"
              OnClose="HandleClose"
-             MaxWidth="600">
+             Width="90vw"
+             Height="90vh">
     <ChildContent>
-        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
-        {
-            <div class="alert alert-danger mb-3">@ViewModel.ErrorMessage</div>
-        }
-
-        @if (ViewModel.IsLoading)
-        {
-            <div class="text-center py-4">
-                <div class="spinner-border text-secondary" role="status"></div>
-                <p class="mt-2 text-muted">Loading instances...</p>
-            </div>
-        }
-        else if (ViewModel.Instances.Count == 0)
-        {
-            <div class="text-center py-4">
-                <p class="text-muted">No instances running</p>
-            </div>
-        }
-        else
-        {
-            <div class="instance-list">
-                @foreach (var instance in ViewModel.Instances)
+        <SplitPanel ContainerId="instance-mgmt-split-container"
+                    InitialLeftWidthPercent="@_panelWidthPercent"
+                    RightContentClass="log-panel-content"
+                    OnWidthChanged="HandleWidthChanged">
+            <LeftHeader>
+                <h6 class="mb-0">Instances</h6>
+                <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @onclick="HandleRefresh"
+                            disabled="@ViewModel.IsLoading"
+                            title="Refresh instance list">
+                        Refresh
+                    </button>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="HandleStartNew"
+                            disabled="@ViewModel.IsStartingInstance">
+                        @if (ViewModel.IsStartingInstance)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        + Start New
+                    </button>
+                </div>
+            </LeftHeader>
+            <LeftContent>
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
                 {
-                    <div class="instance-card card mb-2">
-                        <div class="card-body py-2 px-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="instance-id font-monospace">@instance.InstanceId</div>
-                                    <small class="text-muted">Started: @FormatDateTime(instance.StartedAt)</small>
-                                </div>
-                                <button class="btn btn-outline-danger btn-sm"
-                                        @onclick="() => HandleStop(instance.InstanceId)"
-                                        disabled="@(ViewModel.StoppingInstanceId == instance.InstanceId)">
-                                    @if (ViewModel.StoppingInstanceId == instance.InstanceId)
-                                    {
-                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    }
-                                    Stop
-                                </button>
-                            </div>
-                        </div>
+                    <div class="alert alert-danger mb-2">@ViewModel.ErrorMessage</div>
+                }
+
+                @if (ViewModel.IsLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                        <p class="mt-2 text-muted">Loading instances...</p>
                     </div>
                 }
-            </div>
-        }
+                else if (ViewModel.Instances.Count == 0)
+                {
+                    <div class="text-center py-4">
+                        <p class="text-muted">No instances running</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="instance-list">
+                        @foreach (var instance in ViewModel.Instances)
+                        {
+                            var isSelected = instance.InstanceId == ViewModel.SelectedInstanceId;
+                            <div class="instance-card @(isSelected ? "selected" : "")"
+                                 @onclick="() => HandleSelectInstance(instance.InstanceId)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="instance-info">
+                                        <div class="instance-id font-monospace">@instance.InstanceId</div>
+                                        <small class="text-muted">Started: @FormatDateTime(instance.StartedAt)</small>
+                                    </div>
+                                    <button class="btn btn-outline-danger btn-sm"
+                                            @onclick="() => HandleStop(instance.InstanceId)"
+                                            @onclick:stopPropagation="true"
+                                            disabled="@(ViewModel.StoppingInstanceId == instance.InstanceId)">
+                                        @if (ViewModel.StoppingInstanceId == instance.InstanceId)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        }
+                                        Stop
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </LeftContent>
+            <RightHeader>
+                <h6 class="mb-0">Stderr Logs</h6>
+                <div class="d-flex gap-2 align-items-center">
+                    @if (!string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
+                    {
+                        @if (ViewModel.IsLogStreamConnected)
+                        {
+                            <span class="badge bg-success">Connected</span>
+                        }
+                        else if (!string.IsNullOrEmpty(ViewModel.LogStreamError))
+                        {
+                            <span class="badge bg-danger" title="@ViewModel.LogStreamError">Error</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning">Connecting...</span>
+                        }
+                    }
+                </div>
+            </RightHeader>
+            <RightContent>
+                @if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
+                {
+                    <div class="text-center py-4">
+                        <p class="text-muted">Select an instance to view its logs.</p>
+                    </div>
+                }
+                else if (ViewModel.LogEntries.Count == 0 && !ViewModel.IsLogStreamConnected)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                        <p class="mt-2 text-muted">Connecting to log stream...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="log-entries" id="instance-log-container">
+                        @foreach (var entry in ViewModel.LogEntries)
+                        {
+                            <div class="log-line">
+                                <span class="log-timestamp">@entry.Timestamp.ToLocalTime().ToString("HH:mm:ss.fff")</span>
+                                <span class="log-text">@entry.Text</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </RightContent>
+        </SplitPanel>
     </ChildContent>
 
     <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div class="d-flex gap-2">
-                <button class="btn btn-primary"
-                        @onclick="HandleStartNew"
-                        disabled="@ViewModel.IsStartingInstance">
-                    @if (ViewModel.IsStartingInstance)
-                    {
-                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                    }
-                    + Start New Instance
-                </button>
-                <button class="btn btn-outline-secondary"
-                        @onclick="HandleRefresh"
-                        disabled="@ViewModel.IsLoading">
-                    Refresh
-                </button>
-            </div>
+        <div class="d-flex justify-content-end w-100">
             <button class="btn btn-secondary" @onclick="HandleClose">
                 Close
             </button>
@@ -80,10 +144,22 @@
 </ModalDialog>
 
 @code {
-    protected override void OnInitialized()
+    private double _panelWidthPercent = 33;
+    private bool _autoScroll = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        base.OnInitialized();
+        await base.OnInitializedAsync();
+        await UserPreferences.LoadAsync();
+        _panelWidthPercent = UserPreferences.InstanceManagementPanelWidthPercent;
         ViewModel.InstancesChanged += HandleInstancesChanged;
+        ViewModel.LogEntriesChanged += HandleLogEntriesChanged;
+    }
+
+    private void HandleWidthChanged(double newPercent)
+    {
+        _panelWidthPercent = newPercent;
+        UserPreferences.InstanceManagementPanelWidthPercent = (int)newPercent;
     }
 
     private void HandleInstancesChanged()
@@ -91,11 +167,50 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void HandleLogEntriesChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await AutoScrollIfNeeded();
+        });
+    }
+
+    private async Task AutoScrollIfNeeded()
+    {
+        if (_autoScroll)
+        {
+            // Small delay to let the DOM update
+            await Task.Yield();
+            try
+            {
+                _autoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "instance-log-container");
+                await JS.InvokeVoidAsync("scrollHelper.scrollToBottom", "instance-log-container");
+            }
+            catch
+            {
+                // Element may not exist yet
+            }
+        }
+        else
+        {
+            try
+            {
+                _autoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "instance-log-container");
+            }
+            catch
+            {
+                // Element may not exist yet
+            }
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             ViewModel.InstancesChanged -= HandleInstancesChanged;
+            ViewModel.LogEntriesChanged -= HandleLogEntriesChanged;
         }
         base.Dispose(disposing);
     }
@@ -108,6 +223,12 @@
     private string FormatDateTime(DateTimeOffset dateTime)
     {
         return dateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private async Task HandleSelectInstance(string instanceId)
+    {
+        _autoScroll = true;
+        await ViewModel.SelectInstanceCommand.ExecuteAsync(instanceId);
     }
 
     private async Task HandleStop(string instanceId)
@@ -125,8 +246,8 @@
         await ViewModel.RefreshCommand.ExecuteAsync(null);
     }
 
-    private void HandleClose()
+    private async Task HandleClose()
     {
-        ViewModel.CloseCommand.Execute(null);
+        await ViewModel.CloseCommand.ExecuteAsync(null);
     }
 }

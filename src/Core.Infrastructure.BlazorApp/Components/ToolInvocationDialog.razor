@@ -4,7 +4,6 @@
 @using System.Text.Json
 @inherits Blazing.Mvvm.Components.MvvmComponentBase<ToolInvocationViewModel>
 @inject IUserPreferencesService UserPreferences
-@inject IJSRuntime JS
 
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@GetTitle()"
@@ -12,195 +11,189 @@
              Width="90vw"
              Height="90vh">
     <ChildContent>
-            <div id="tool-invocation-split-container" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
-                @* Left Panel - Input *@
-                <div class="split-panel input-panel" style="width: @(_inputPanelWidthPercent)%;">
-                    <div class="panel-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">Input</h6>
-                        <div class="d-flex gap-2 align-items-center">
-                            @* History navigation *@
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-secondary"
-                                        disabled="@(!ViewModel.CanGoHistoryUp)"
-                                        @onclick="HandleHistoryUp"
-                                        title="Older history (Alt+Up)">
-                                    &#9650;
-                                </button>
-                                <button class="btn btn-outline-secondary"
-                                        disabled="@(!ViewModel.CanGoHistoryDown)"
-                                        @onclick="HandleHistoryDown"
-                                        title="Newer history (Alt+Down)">
-                                    &#9660;
-                                </button>
-                            </div>
-                            <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
-
-                            <div class="vr"></div>
-
-                            @* Clear buttons *@
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    @onclick="HandleClearDraft"
-                                    title="Clear inputs (reset to defaults)">
-                                Clear
-                            </button>
-                            @if (ViewModel.HistoryCount > 0)
-                            {
-                                <button class="btn btn-outline-danger btn-sm"
-                                        @onclick="HandleClearHistory"
-                                        title="Clear all history for this tool">
-                                    Clear History
-                                </button>
-                            }
-
-                            <div class="vr"></div>
-
-                            @* View toggle and Invoke *@
-                            <button class="btn btn-outline-secondary btn-sm"
-                                    @onclick="ToggleInputMode"
-                                    title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
-                                @(_isJsonMode ? "Form" : "JSON")
-                            </button>
-                            <button class="btn btn-primary btn-sm"
-                                    @onclick="HandleInvoke"
-                                    disabled="@(!CanInvoke())">
-                                @if (ViewModel.IsStartingInstance)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Starting...</span>
-                                }
-                                else if (ViewModel.IsInvoking)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    <span>Invoking...</span>
-                                }
-                                else
-                                {
-                                    <span>Invoke</span>
-                                }
-                            </button>
-                        </div>
+        <SplitPanel ContainerId="tool-invocation-split-container"
+                    InitialLeftWidthPercent="@_inputPanelWidthPercent"
+                    LeftPanelClass="input-panel"
+                    OnKeyDown="HandleKeyDown"
+                    OnWidthChanged="HandleWidthChanged">
+            <LeftHeader>
+                <h6 class="mb-0">Input</h6>
+                <div class="d-flex gap-2 align-items-center">
+                    @* History navigation *@
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary"
+                                disabled="@(!ViewModel.CanGoHistoryUp)"
+                                @onclick="HandleHistoryUp"
+                                title="Older history (Alt+Up)">
+                            &#9650;
+                        </button>
+                        <button class="btn btn-outline-secondary"
+                                disabled="@(!ViewModel.CanGoHistoryDown)"
+                                @onclick="HandleHistoryDown"
+                                title="Newer history (Alt+Down)">
+                            &#9660;
+                        </button>
                     </div>
-                    <div class="panel-content">
-                        <InstanceSelector Mode="@ViewModel.LifecycleMode"
-                                         ModeChanged="@OnLifecycleModeChanged"
-                                         SelectedInstanceId="@ViewModel.SelectedExistingInstanceId"
-                                         SelectedInstanceIdChanged="@OnSelectedInstanceChanged"
-                                         RunningInstances="@ViewModel.RunningInstances"
-                                         Disabled="@(ViewModel.IsInvoking || ViewModel.IsStartingInstance)" />
+                    <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
 
-                        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
-                        {
-                            <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
-                        }
+                    <div class="vr"></div>
 
-                        @if (ViewModel.Tool?.InputSchema?.Parameters.Count > 0)
-                        {
-                            @if (_isJsonMode)
-                            {
-                                <textarea class="form-control font-monospace"
-                                          rows="20"
-                                          @bind="_jsonInputValue"
-                                          @bind:event="oninput"
-                                          placeholder="Enter JSON input..."></textarea>
-                                @if (!string.IsNullOrEmpty(_jsonParseError))
-                                {
-                                    <div class="text-danger small mt-1">@_jsonParseError</div>
-                                }
-                            }
-                            else
-                            {
-                                <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
-                                    @foreach (var param in ViewModel.Tool.InputSchema.Parameters)
-                                    {
-                                        <SchemaBasedInput Parameter="param"
-                                                         Value="@GetInputValue(param.Name)"
-                                                         OnValueChanged="v => ViewModel.SetInputValue(param.Name, v)" />
-                                    }
-                                </form>
-                            }
-                        }
-                        else
-                        {
-                            <p class="text-muted">This tool has no input parameters.</p>
-                        }
-                    </div>
-                </div>
+                    @* Clear buttons *@
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @onclick="HandleClearDraft"
+                            title="Clear inputs (reset to defaults)">
+                        Clear
+                    </button>
+                    @if (ViewModel.HistoryCount > 0)
+                    {
+                        <button class="btn btn-outline-danger btn-sm"
+                                @onclick="HandleClearHistory"
+                                title="Clear all history for this tool">
+                            Clear History
+                        </button>
+                    }
 
-                @* Resizer *@
-                <div class="split-resizer" @onmousedown="StartResize"></div>
+                    <div class="vr"></div>
 
-                @* Right Panel - Output *@
-                <div class="split-panel output-panel" style="width: @(100 - _inputPanelWidthPercent)%;">
-                    <div class="panel-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">Output</h6>
-                        @{
-                            var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
-                        }
-                        @if (invokedAt.HasValue)
+                    @* View toggle and Invoke *@
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @onclick="ToggleInputMode"
+                            title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                        @(_isJsonMode ? "Form" : "JSON")
+                    </button>
+                    <button class="btn btn-primary btn-sm"
+                            @onclick="HandleInvoke"
+                            disabled="@(!CanInvoke())">
+                        @if (ViewModel.IsStartingInstance)
                         {
-                            <span class="small text-muted">
-                                @invokedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff")
-                            </span>
-                        }
-                    </div>
-                    <div class="panel-content">
-                        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Output)
-                        {
-                            <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
-                        }
-                        else if (ViewModel.Result != null)
-                        {
-                            @if (ViewModel.Result.IsError)
-                            {
-                                <div class="alert alert-warning mb-3">
-                                    The tool returned an error response.
-                                </div>
-                            }
-
-                            <div class="output-container">
-                                @foreach (var block in ViewModel.Result.Content)
-                                {
-                                    @if (block.Type == "text" && !string.IsNullOrEmpty(block.Text))
-                                    {
-                                        <pre class="output-text">@block.Text</pre>
-                                    }
-                                    else if (block.Type == "image" && !string.IsNullOrEmpty(block.Data))
-                                    {
-                                        <div class="output-image">
-                                            <img src="data:@(block.MimeType ?? "image/png");base64,@block.Data" alt="Tool output" />
-                                        </div>
-                                    }
-                                    else if (block.Type == "resource" && !string.IsNullOrEmpty(block.Uri))
-                                    {
-                                        <div class="output-resource">
-                                            <a href="@block.Uri" target="_blank" rel="noopener noreferrer">@block.Uri</a>
-                                        </div>
-                                    }
-                                }
-
-                                @if (ViewModel.Result.StructuredContent.HasValue)
-                                {
-                                    <details class="mt-3">
-                                        <summary class="text-muted small">Structured Content</summary>
-                                        <pre class="output-json mt-2">@FormatJson(ViewModel.Result.StructuredContent.Value)</pre>
-                                    </details>
-                                }
-                            </div>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Starting...</span>
                         }
                         else if (ViewModel.IsInvoking)
                         {
-                            <div class="text-center py-4">
-                                <div class="spinner-border text-secondary" role="status"></div>
-                                <p class="mt-2 text-muted">Invoking tool...</p>
-                            </div>
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Invoking...</span>
                         }
                         else
                         {
-                            <p class="text-muted">Click "Invoke" to run the tool and see results here.</p>
+                            <span>Invoke</span>
+                        }
+                    </button>
+                </div>
+            </LeftHeader>
+            <LeftContent>
+                <InstanceSelector Mode="@ViewModel.LifecycleMode"
+                                 ModeChanged="@OnLifecycleModeChanged"
+                                 SelectedInstanceId="@ViewModel.SelectedExistingInstanceId"
+                                 SelectedInstanceIdChanged="@OnSelectedInstanceChanged"
+                                 RunningInstances="@ViewModel.RunningInstances"
+                                 Disabled="@(ViewModel.IsInvoking || ViewModel.IsStartingInstance)" />
+
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Input)
+                {
+                    <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
+                }
+
+                @if (ViewModel.Tool?.InputSchema?.Parameters.Count > 0)
+                {
+                    @if (_isJsonMode)
+                    {
+                        <textarea class="form-control font-monospace"
+                                  rows="20"
+                                  @bind="_jsonInputValue"
+                                  @bind:event="oninput"
+                                  placeholder="Enter JSON input..."></textarea>
+                        @if (!string.IsNullOrEmpty(_jsonParseError))
+                        {
+                            <div class="text-danger small mt-1">@_jsonParseError</div>
+                        }
+                    }
+                    else
+                    {
+                        <form @onsubmit="HandleSubmit" @onsubmit:preventDefault="true">
+                            @foreach (var param in ViewModel.Tool.InputSchema.Parameters)
+                            {
+                                <SchemaBasedInput Parameter="param"
+                                                 Value="@GetInputValue(param.Name)"
+                                                 OnValueChanged="v => ViewModel.SetInputValue(param.Name, v)" />
+                            }
+                        </form>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">This tool has no input parameters.</p>
+                }
+            </LeftContent>
+            <RightHeader>
+                <h6 class="mb-0">Output</h6>
+                @{
+                    var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
+                }
+                @if (invokedAt.HasValue)
+                {
+                    <span class="small text-muted">
+                        @invokedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff")
+                    </span>
+                }
+            </RightHeader>
+            <RightContent>
+                @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && ViewModel.CurrentView == InvocationView.Output)
+                {
+                    <div class="alert alert-danger">@ViewModel.ErrorMessage</div>
+                }
+                else if (ViewModel.Result != null)
+                {
+                    @if (ViewModel.Result.IsError)
+                    {
+                        <div class="alert alert-warning mb-3">
+                            The tool returned an error response.
+                        </div>
+                    }
+
+                    <div class="output-container">
+                        @foreach (var block in ViewModel.Result.Content)
+                        {
+                            @if (block.Type == "text" && !string.IsNullOrEmpty(block.Text))
+                            {
+                                <pre class="output-text">@block.Text</pre>
+                            }
+                            else if (block.Type == "image" && !string.IsNullOrEmpty(block.Data))
+                            {
+                                <div class="output-image">
+                                    <img src="data:@(block.MimeType ?? "image/png");base64,@block.Data" alt="Tool output" />
+                                </div>
+                            }
+                            else if (block.Type == "resource" && !string.IsNullOrEmpty(block.Uri))
+                            {
+                                <div class="output-resource">
+                                    <a href="@block.Uri" target="_blank" rel="noopener noreferrer">@block.Uri</a>
+                                </div>
+                            }
+                        }
+
+                        @if (ViewModel.Result.StructuredContent.HasValue)
+                        {
+                            <details class="mt-3">
+                                <summary class="text-muted small">Structured Content</summary>
+                                <pre class="output-json mt-2">@FormatJson(ViewModel.Result.StructuredContent.Value)</pre>
+                            </details>
                         }
                     </div>
-                </div>
-            </div>
+                }
+                else if (ViewModel.IsInvoking)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                        <p class="mt-2 text-muted">Invoking tool...</p>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">Click "Invoke" to run the tool and see results here.</p>
+                }
+            </RightContent>
+        </SplitPanel>
     </ChildContent>
 
     <FooterContent>
@@ -228,7 +221,6 @@
 
 @code {
     private double _inputPanelWidthPercent = 33;
-    private double _startWidthPercent;
     private bool _isJsonMode = false;
     private string _jsonInputValue = "{}";
     private string? _jsonParseError = null;
@@ -238,6 +230,12 @@
         await base.OnInitializedAsync();
         await UserPreferences.LoadAsync();
         _inputPanelWidthPercent = UserPreferences.ToolInvocationInputPanelWidthPercent;
+    }
+
+    private void HandleWidthChanged(double newPercent)
+    {
+        _inputPanelWidthPercent = newPercent;
+        UserPreferences.ToolInvocationInputPanelWidthPercent = (int)newPercent;
     }
 
     private void ToggleInputMode()
@@ -452,29 +450,6 @@
                 }
                 break;
         }
-    }
-
-    private async Task StartResize(MouseEventArgs e)
-    {
-        _startWidthPercent = _inputPanelWidthPercent;
-        await JS.InvokeVoidAsync("splitPanelResize.start",
-            DotNetObjectReference.Create(this),
-            "tool-invocation-split-container",
-            (int)e.ClientX,
-            _inputPanelWidthPercent);
-    }
-
-    [JSInvokable]
-    public void UpdateWidthPercent(double newPercent)
-    {
-        _inputPanelWidthPercent = Math.Clamp(newPercent, 20, 80);
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public void EndResize()
-    {
-        UserPreferences.ToolInvocationInputPanelWidthPercent = (int)_inputPanelWidthPercent;
     }
 
     private static string FormatJson(System.Text.Json.JsonElement element)

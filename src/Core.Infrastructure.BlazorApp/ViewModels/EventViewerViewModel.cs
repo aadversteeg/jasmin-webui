@@ -94,6 +94,10 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         {
             ServerUrl = _appState.ServerUrl;
         }
+        else if (!string.IsNullOrWhiteSpace(ServerUrl))
+        {
+            _appState.ServerUrl = ServerUrl;
+        }
 
         await FilterViewModel.InitializeAsync();
 

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -51,6 +52,15 @@ public partial class McpServerDialogViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isRefreshingMetadata;
+
+    [ObservableProperty]
+    private bool _isJsonMode;
+
+    [ObservableProperty]
+    private string _jsonInputValue = "{}";
+
+    [ObservableProperty]
+    private string? _jsonParseError;
 
     private CancellationTokenSource? _cancellationTokenSource;
 
@@ -122,6 +132,7 @@ public partial class McpServerDialogViewModel : ViewModelBase
                 Command = result.Value.Command;
                 Arguments = result.Value.Args.ToList();
                 EnvironmentVariables = new Dictionary<string, string>(result.Value.Env);
+                SyncFormToJson();
             }
             else
             {
@@ -350,6 +361,96 @@ public partial class McpServerDialogViewModel : ViewModelBase
         TestErrorMessage = null;
         ValidationError = null;
         IsLoading = false;
+        IsJsonMode = false;
+        JsonInputValue = "{}";
+        JsonParseError = null;
+    }
+
+    /// <summary>
+    /// Serializes the current form fields (Command, Arguments, EnvironmentVariables) to JSON.
+    /// </summary>
+    public void SyncFormToJson()
+    {
+        try
+        {
+            var config = new Dictionary<string, object?>
+            {
+                ["command"] = Command,
+                ["args"] = Arguments,
+                ["env"] = EnvironmentVariables
+            };
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            JsonInputValue = JsonSerializer.Serialize(config, options);
+            JsonParseError = null;
+        }
+        catch (Exception ex)
+        {
+            JsonParseError = $"Error serializing: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Deserializes JSON input into form fields (Command, Arguments, EnvironmentVariables).
+    /// </summary>
+    public void SyncJsonToForm()
+    {
+        try
+        {
+            Command = string.Empty;
+            Arguments = new List<string>();
+            EnvironmentVariables = new Dictionary<string, string>();
+
+            if (string.IsNullOrWhiteSpace(JsonInputValue))
+            {
+                JsonParseError = null;
+                return;
+            }
+
+            var parsed = JsonSerializer.Deserialize<JsonElement>(JsonInputValue);
+            JsonElement config = parsed;
+
+            // Check if this is wrapped format: {"serverName": {"command": "..."}}
+            if (!parsed.TryGetProperty("command", out _))
+            {
+                foreach (var prop in parsed.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind == JsonValueKind.Object &&
+                        prop.Value.TryGetProperty("command", out _))
+                    {
+                        config = prop.Value;
+                        if (string.IsNullOrWhiteSpace(ServerName))
+                        {
+                            ServerName = prop.Name;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (config.TryGetProperty("command", out var commandElement))
+            {
+                Command = commandElement.GetString() ?? string.Empty;
+            }
+
+            if (config.TryGetProperty("args", out var argsElement) && argsElement.ValueKind == JsonValueKind.Array)
+            {
+                Arguments = argsElement.EnumerateArray()
+                    .Select(e => e.GetString() ?? string.Empty)
+                    .ToList();
+            }
+
+            if (config.TryGetProperty("env", out var envElement) && envElement.ValueKind == JsonValueKind.Object)
+            {
+                EnvironmentVariables = envElement.EnumerateObject()
+                    .ToDictionary(p => p.Name, p => p.Value.GetString() ?? string.Empty);
+            }
+
+            JsonParseError = null;
+        }
+        catch (JsonException ex)
+        {
+            JsonParseError = $"Invalid JSON: {ex.Message}";
+        }
     }
 
     private bool ValidateForm()
