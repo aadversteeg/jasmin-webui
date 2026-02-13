@@ -15,6 +15,7 @@ public class PromptInvocationService : IPromptInvocationService
     private readonly ILogger<PromptInvocationService> _logger;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan MaxWaitTime = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public PromptInvocationService(HttpClient httpClient, ILogger<PromptInvocationService> logger)
     {
@@ -30,8 +31,9 @@ public class PromptInvocationService : IPromptInvocationService
     {
         try
         {
-            var request = new CreateRequestDto("start", null, null, null, null, null);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var target = TargetHelper.BuildServerTarget(serverName);
+            var request = new CreateRequestDto("mcp-server.start", target);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -39,12 +41,22 @@ public class PromptInvocationService : IPromptInvocationService
             }
 
             var response = result.Value!;
-            if (string.IsNullOrEmpty(response.ResultInstanceId))
+            if (!response.Output.HasValue)
             {
                 return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
             }
 
-            return ToolInvocationServiceResult<string>.Success(response.ResultInstanceId);
+            var output = response.Output.Value;
+            if (output.TryGetProperty("instanceId", out var instanceIdElement))
+            {
+                var instanceId = instanceIdElement.GetString();
+                if (!string.IsNullOrEmpty(instanceId))
+                {
+                    return ToolInvocationServiceResult<string>.Success(instanceId);
+                }
+            }
+
+            return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
         }
         catch (Exception ex)
         {
@@ -64,15 +76,16 @@ public class PromptInvocationService : IPromptInvocationService
     {
         try
         {
-            JsonElement? argumentsElement = null;
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var parameters = new Dictionary<string, object?> { ["promptName"] = promptName };
             if (arguments != null && arguments.Count > 0)
             {
-                var json = JsonSerializer.Serialize(arguments);
-                argumentsElement = JsonDocument.Parse(json).RootElement;
+                parameters["arguments"] = arguments;
             }
+            var parametersJson = JsonSerializer.SerializeToElement(parameters);
 
-            var request = new CreateRequestDto("getPrompt", instanceId, null, null, promptName, argumentsElement);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var request = new CreateRequestDto("mcp-server.instance.get-prompt", target, parametersJson);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -80,13 +93,20 @@ public class PromptInvocationService : IPromptInvocationService
             }
 
             var response = result.Value!;
-            if (response.PromptOutput == null)
+            if (!response.Output.HasValue)
             {
                 return ToolInvocationServiceResult<PromptInvocationResult>.Failure("No prompt output in response");
             }
 
+            var output = JsonSerializer.Deserialize<PromptOutputDto>(
+                response.Output.Value.GetRawText(), JsonOptions);
+            if (output == null)
+            {
+                return ToolInvocationServiceResult<PromptInvocationResult>.Failure("Failed to parse output");
+            }
+
             var invocationResult = new PromptInvocationResult(
-                response.PromptOutput.Messages.Select(m => new PromptMessage(
+                output.Messages.Select(m => new PromptMessage(
                     m.Role,
                     new PromptMessageContent(
                         m.Content.Type,
@@ -94,7 +114,7 @@ public class PromptInvocationService : IPromptInvocationService
                         m.Content.MimeType,
                         m.Content.Data,
                         m.Content.Uri))).ToList(),
-                response.PromptOutput.Description);
+                output.Description);
 
             return ToolInvocationServiceResult<PromptInvocationResult>.Success(invocationResult);
         }
@@ -114,8 +134,9 @@ public class PromptInvocationService : IPromptInvocationService
     {
         try
         {
-            var request = new CreateRequestDto("stop", instanceId, null, null, null, null);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var request = new CreateRequestDto("mcp-server.instance.stop", target);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -171,13 +192,11 @@ public class PromptInvocationService : IPromptInvocationService
 
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
-        string serverName,
         CreateRequestDto request,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests");
+        var url = BuildUrl(serverUrl, "/v1/requests");
 
-        // Create the request
         var response = await _httpClient.PostAsJsonAsync(url, request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -193,17 +212,15 @@ public class PromptInvocationService : IPromptInvocationService
             return ToolInvocationServiceResult<RequestResponseDto>.Failure("Invalid response from server");
         }
 
-        // Poll for completion
-        return await PollForCompletionAsync(serverUrl, serverName, requestResponse.RequestId, cancellationToken);
+        return await PollForCompletionAsync(serverUrl, requestResponse.Id, cancellationToken);
     }
 
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> PollForCompletionAsync(
         string serverUrl,
-        string serverName,
         string requestId,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests/{Uri.EscapeDataString(requestId)}");
+        var url = BuildUrl(serverUrl, $"/v1/requests/{Uri.EscapeDataString(requestId)}");
         var startTime = DateTime.UtcNow;
 
         while (true)
@@ -221,7 +238,7 @@ public class PromptInvocationService : IPromptInvocationService
                 return ToolInvocationServiceResult<RequestResponseDto>.Failure("Invalid response from server");
             }
 
-            switch (response.Status.ToLowerInvariant())
+            switch (response.Status)
             {
                 case "completed":
                     return ToolInvocationServiceResult<RequestResponseDto>.Success(response);

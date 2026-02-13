@@ -86,7 +86,8 @@ public class EventStreamService : IEventStreamService, IAsyncDisposable
             {
                 _logger.LogInformation("Reconnecting with last event ID: {LastEventId}", eventIdToUse);
             }
-            await _jsRuntime.InvokeVoidAsync("eventSourceHelper.connect", cancellationToken, streamUrl, _dotNetRef, eventIdToUse);
+            var eventNames = McpServerEventTypeMap.AllApiNames.ToArray();
+            await _jsRuntime.InvokeVoidAsync("eventSourceHelper.connect", cancellationToken, streamUrl, _dotNetRef, eventIdToUse, eventNames);
         }
         catch (Exception ex)
         {

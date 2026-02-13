@@ -54,15 +54,14 @@ public class JasminApiService : IJasminApiService
             var url = BuildUrl(serverUrl, "/v1/events/types");
             var response = await _httpClient.GetFromJsonAsync<EventTypesResponseDto>(url);
 
-            if (response?.Items == null)
+            if (response?.EventTypes == null)
             {
                 return [];
             }
 
-            return response.Items
+            return response.EventTypes
                 .Select(dto => new EventTypeInfo(
                     dto.Name,
-                    dto.Value,
                     dto.Category,
                     dto.Description))
                 .ToList();

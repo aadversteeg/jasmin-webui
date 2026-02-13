@@ -3,26 +3,18 @@ using System.Text.Json;
 namespace Core.Infrastructure.JasminClient.Dtos;
 
 /// <summary>
-/// DTO for an MCP server request response.
+/// DTO for a request response.
 /// </summary>
 public record RequestResponseDto(
-    string RequestId,
-    string ServerName,
+    string Id,
     string Action,
+    string Target,
     string Status,
     string CreatedAt,
     string? CompletedAt,
-    string? TargetInstanceId,
-    string? ResultInstanceId,
-    IReadOnlyList<RequestErrorDto>? Errors,
-    string? ToolName = null,
-    JsonElement? Input = null,
-    ToolInvocationOutputDto? Output = null,
-    string? PromptName = null,
-    JsonElement? Arguments = null,
-    PromptOutputDto? PromptOutput = null,
-    string? ResourceUri = null,
-    ResourceReadOutputDto? ResourceOutput = null);
+    JsonElement? Parameters,
+    JsonElement? Output,
+    IReadOnlyList<RequestErrorDto>? Errors);
 
 /// <summary>
 /// DTO for request error information.

@@ -3,12 +3,12 @@ window.eventSourceHelper = {
     _connections: {},
     _counter: 0,
 
-    connect: function (url, dotNetHelper, lastEventId, eventName, callbackName) {
+    connect: function (url, dotNetHelper, lastEventId, eventNames, callbackName) {
         const connectionId = ++this._counter;
         dotNetHelper._connectionId = connectionId;
 
-        // Default event name and callback for backward compatibility
-        var evtName = eventName || 'mcp-server-event';
+        // Support array or single string for event names
+        var names = Array.isArray(eventNames) ? eventNames : (eventNames ? [eventNames] : ['message']);
         var cbName = callbackName || 'OnEventReceived';
 
         // Close any existing connection
@@ -50,13 +50,16 @@ window.eventSourceHelper = {
             }
         };
 
-        eventSource.addEventListener(evtName, function (event) {
-            // Track the last event ID
-            if (event.lastEventId) {
-                connection.lastEventId = event.lastEventId;
-            }
-            console.log('[EventSource] Received ' + evtName + ':', event.data.substring(0, 100));
-            dotNetHelper.invokeMethodAsync(cbName, event.data, event.lastEventId || '');
+        // Register a listener for each event name
+        names.forEach(function (evtName) {
+            eventSource.addEventListener(evtName, function (event) {
+                // Track the last event ID
+                if (event.lastEventId) {
+                    connection.lastEventId = event.lastEventId;
+                }
+                console.log('[EventSource] Received ' + evtName + ':', event.data.substring(0, 100));
+                dotNetHelper.invokeMethodAsync(cbName, event.data, event.lastEventId || '');
+            });
         });
 
         // Also listen for generic message events (fallback)

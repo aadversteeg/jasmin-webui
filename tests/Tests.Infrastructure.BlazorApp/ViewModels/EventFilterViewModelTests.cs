@@ -502,9 +502,9 @@ public class EventFilterViewModelTests
         // Arrange
         var eventTypes = new List<EventTypeInfo>
         {
-            new("Starting", 0, "Lifecycle", "Server is starting"),
-            new("Started", 1, "Lifecycle", "Server has started"),
-            new("ConfigurationCreated", 6, "Configuration", "Configuration was created")
+            new("mcp-server.instance.starting", "lifecycle", "Server is starting"),
+            new("mcp-server.instance.started", "lifecycle", "Server has started"),
+            new("mcp-server.configuration.created", "configuration", "Configuration was created")
         };
         _apiServiceMock.Setup(x => x.GetEventTypesAsync(It.IsAny<string>()))
             .ReturnsAsync(eventTypes);
@@ -514,9 +514,9 @@ public class EventFilterViewModelTests
 
         // Assert
         _sut.EventTypeGroups.Should().HaveCount(2);
-        _sut.EventTypeGroups.Keys.Should().Contain("Lifecycle");
-        _sut.EventTypeGroups.Keys.Should().Contain("Configuration");
-        _sut.EventTypeGroups["Lifecycle"].Should().HaveCount(2);
+        _sut.EventTypeGroups.Keys.Should().Contain("lifecycle");
+        _sut.EventTypeGroups.Keys.Should().Contain("configuration");
+        _sut.EventTypeGroups["lifecycle"].Should().HaveCount(2);
     }
 
     [Fact(DisplayName = "EFV-034: EventTypeGroups should return defaults when API not loaded")]
@@ -546,7 +546,7 @@ public class EventFilterViewModelTests
         // Arrange
         var eventTypes = new List<EventTypeInfo>
         {
-            new("Starting", 0, "Lifecycle", "Server is starting")
+            new("mcp-server.instance.starting", "lifecycle", "Server is starting")
         };
         _apiServiceMock.Setup(x => x.GetEventTypesAsync(It.IsAny<string>()))
             .ReturnsAsync(eventTypes);

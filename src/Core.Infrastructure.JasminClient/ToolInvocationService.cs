@@ -15,6 +15,7 @@ public class ToolInvocationService : IToolInvocationService
     private readonly ILogger<ToolInvocationService> _logger;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan MaxWaitTime = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ToolInvocationService(HttpClient httpClient, ILogger<ToolInvocationService> logger)
     {
@@ -30,8 +31,9 @@ public class ToolInvocationService : IToolInvocationService
     {
         try
         {
-            var request = new CreateRequestDto("start", null, null, null);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var target = TargetHelper.BuildServerTarget(serverName);
+            var request = new CreateRequestDto("mcp-server.start", target);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -39,12 +41,22 @@ public class ToolInvocationService : IToolInvocationService
             }
 
             var response = result.Value!;
-            if (string.IsNullOrEmpty(response.ResultInstanceId))
+            if (!response.Output.HasValue)
             {
                 return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
             }
 
-            return ToolInvocationServiceResult<string>.Success(response.ResultInstanceId);
+            var output = response.Output.Value;
+            if (output.TryGetProperty("instanceId", out var instanceIdElement))
+            {
+                var instanceId = instanceIdElement.GetString();
+                if (!string.IsNullOrEmpty(instanceId))
+                {
+                    return ToolInvocationServiceResult<string>.Success(instanceId);
+                }
+            }
+
+            return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
         }
         catch (Exception ex)
         {
@@ -64,15 +76,16 @@ public class ToolInvocationService : IToolInvocationService
     {
         try
         {
-            JsonElement? inputElement = null;
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var parameters = new Dictionary<string, object?> { ["toolName"] = toolName };
             if (input != null && input.Count > 0)
             {
-                var json = JsonSerializer.Serialize(input);
-                inputElement = JsonDocument.Parse(json).RootElement;
+                parameters["input"] = input;
             }
+            var parametersJson = JsonSerializer.SerializeToElement(parameters);
 
-            var request = new CreateRequestDto("invokeTool", instanceId, toolName, inputElement);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var request = new CreateRequestDto("mcp-server.instance.invoke-tool", target, parametersJson);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -80,20 +93,27 @@ public class ToolInvocationService : IToolInvocationService
             }
 
             var response = result.Value!;
-            if (response.Output == null)
+            if (!response.Output.HasValue)
             {
                 return ToolInvocationServiceResult<ToolInvocationResult>.Failure("No output in response");
             }
 
+            var output = JsonSerializer.Deserialize<ToolInvocationOutputDto>(
+                response.Output.Value.GetRawText(), JsonOptions);
+            if (output == null)
+            {
+                return ToolInvocationServiceResult<ToolInvocationResult>.Failure("Failed to parse output");
+            }
+
             var invocationResult = new ToolInvocationResult(
-                response.Output.Content.Select(c => new ToolContentBlock(
+                output.Content.Select(c => new ToolContentBlock(
                     c.Type,
                     c.Text,
                     c.MimeType,
                     c.Data,
                     c.Uri)).ToList(),
-                response.Output.StructuredContent,
-                response.Output.IsError);
+                output.StructuredContent,
+                output.IsError);
 
             return ToolInvocationServiceResult<ToolInvocationResult>.Success(invocationResult);
         }
@@ -113,8 +133,9 @@ public class ToolInvocationService : IToolInvocationService
     {
         try
         {
-            var request = new CreateRequestDto("stop", instanceId, null, null);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var request = new CreateRequestDto("mcp-server.instance.stop", target);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -177,8 +198,9 @@ public class ToolInvocationService : IToolInvocationService
     {
         try
         {
-            var request = new CreateRequestDto("refreshMetadata", instanceId, null, null);
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var request = new CreateRequestDto("mcp-server.instance.refresh-metadata", target);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -196,13 +218,11 @@ public class ToolInvocationService : IToolInvocationService
 
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
-        string serverName,
         CreateRequestDto request,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests");
+        var url = BuildUrl(serverUrl, "/v1/requests");
 
-        // Create the request
         var response = await _httpClient.PostAsJsonAsync(url, request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -218,17 +238,15 @@ public class ToolInvocationService : IToolInvocationService
             return ToolInvocationServiceResult<RequestResponseDto>.Failure("Invalid response from server");
         }
 
-        // Poll for completion
-        return await PollForCompletionAsync(serverUrl, serverName, requestResponse.RequestId, cancellationToken);
+        return await PollForCompletionAsync(serverUrl, requestResponse.Id, cancellationToken);
     }
 
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> PollForCompletionAsync(
         string serverUrl,
-        string serverName,
         string requestId,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests/{Uri.EscapeDataString(requestId)}");
+        var url = BuildUrl(serverUrl, $"/v1/requests/{Uri.EscapeDataString(requestId)}");
         var startTime = DateTime.UtcNow;
 
         while (true)
@@ -246,7 +264,7 @@ public class ToolInvocationService : IToolInvocationService
                 return ToolInvocationServiceResult<RequestResponseDto>.Failure("Invalid response from server");
             }
 
-            switch (response.Status.ToLowerInvariant())
+            switch (response.Status)
             {
                 case "completed":
                     return ToolInvocationServiceResult<RequestResponseDto>.Success(response);

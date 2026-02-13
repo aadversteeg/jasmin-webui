@@ -453,7 +453,7 @@ public partial class EventFilterViewModel : ViewModelBase
 
         foreach (var type in types)
         {
-            if (Enum.TryParse<McpServerEventType>(type.Name, out var eventType))
+            if (McpServerEventTypeMap.TryFromApiName(type.Name, out var eventType))
             {
                 if (!groups.TryGetValue(type.Category, out var list))
                 {

@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Core.Application.McpServers;
 using Core.Infrastructure.JasminClient.Dtos;
 using Microsoft.Extensions.Logging;
@@ -14,6 +15,7 @@ public class ResourceViewerService : IResourceViewerService
     private readonly ILogger<ResourceViewerService> _logger;
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan MaxWaitTime = TimeSpan.FromMinutes(5);
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public ResourceViewerService(HttpClient httpClient, ILogger<ResourceViewerService> logger)
     {
@@ -31,12 +33,12 @@ public class ResourceViewerService : IResourceViewerService
     {
         try
         {
-            var request = new CreateRequestDto(
-                Action: "readResource",
-                InstanceId: instanceId,
-                ResourceUri: resourceUri);
+            var target = TargetHelper.BuildInstanceTarget(serverName, instanceId);
+            var parameters = new Dictionary<string, object?> { ["resourceUri"] = resourceUri };
+            var parametersJson = JsonSerializer.SerializeToElement(parameters);
 
-            var result = await ExecuteRequestAsync(serverUrl, serverName, request, cancellationToken);
+            var request = new CreateRequestDto("mcp-server.instance.read-resource", target, parametersJson);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -44,13 +46,20 @@ public class ResourceViewerService : IResourceViewerService
             }
 
             var response = result.Value!;
-            if (response.ResourceOutput == null)
+            if (!response.Output.HasValue)
             {
                 return ResourceViewerServiceResult<McpResourceReadResult>.Failure("No resource output in response");
             }
 
+            var output = JsonSerializer.Deserialize<ResourceReadOutputDto>(
+                response.Output.Value.GetRawText(), JsonOptions);
+            if (output == null)
+            {
+                return ResourceViewerServiceResult<McpResourceReadResult>.Failure("Failed to parse output");
+            }
+
             var readResult = new McpResourceReadResult(
-                response.ResourceOutput.Contents
+                output.Contents
                     .Select(c => new McpResourceContent(c.Uri, c.MimeType, c.Text, c.Blob))
                     .ToList());
 
@@ -65,13 +74,11 @@ public class ResourceViewerService : IResourceViewerService
 
     private async Task<ResourceViewerServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
-        string serverName,
         CreateRequestDto request,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests");
+        var url = BuildUrl(serverUrl, "/v1/requests");
 
-        // Create the request
         var response = await _httpClient.PostAsJsonAsync(url, request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -87,17 +94,15 @@ public class ResourceViewerService : IResourceViewerService
             return ResourceViewerServiceResult<RequestResponseDto>.Failure("Invalid response from server");
         }
 
-        // Poll for completion
-        return await PollForCompletionAsync(serverUrl, serverName, requestResponse.RequestId, cancellationToken);
+        return await PollForCompletionAsync(serverUrl, requestResponse.Id, cancellationToken);
     }
 
     private async Task<ResourceViewerServiceResult<RequestResponseDto>> PollForCompletionAsync(
         string serverUrl,
-        string serverName,
         string requestId,
         CancellationToken cancellationToken)
     {
-        var url = BuildUrl(serverUrl, $"/v1/mcp-servers/{Uri.EscapeDataString(serverName)}/requests/{Uri.EscapeDataString(requestId)}");
+        var url = BuildUrl(serverUrl, $"/v1/requests/{Uri.EscapeDataString(requestId)}");
         var startTime = DateTime.UtcNow;
 
         while (true)
@@ -115,7 +120,7 @@ public class ResourceViewerService : IResourceViewerService
                 return ResourceViewerServiceResult<RequestResponseDto>.Failure("Invalid response from server");
             }
 
-            switch (response.Status.ToLowerInvariant())
+            switch (response.Status)
             {
                 case "completed":
                     return ResourceViewerServiceResult<RequestResponseDto>.Success(response);

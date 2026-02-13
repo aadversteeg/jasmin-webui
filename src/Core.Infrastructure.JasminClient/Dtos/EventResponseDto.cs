@@ -1,25 +1,24 @@
+using System.Text.Json;
+
 namespace Core.Infrastructure.JasminClient.Dtos;
 
 /// <summary>
 /// DTO matching the jasmin-server EventResponse JSON structure.
 /// </summary>
 public record EventResponseDto(
-    string ServerName,
     string EventType,
+    string Target,
     string Timestamp,
-    IReadOnlyList<EventErrorDto>? Errors,
-    string? InstanceId,
-    string? RequestId,
-    EventConfigurationDto? OldConfiguration,
-    EventConfigurationDto? Configuration);
+    JsonElement? Payload,
+    string? RequestId);
 
 /// <summary>
-/// DTO for event errors.
+/// DTO for event errors within a payload.
 /// </summary>
 public record EventErrorDto(string Code, string Message);
 
 /// <summary>
-/// DTO for event configuration.
+/// DTO for event configuration within a payload.
 /// </summary>
 public record EventConfigurationDto(
     string Command,

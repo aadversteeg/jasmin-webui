@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Core.Domain.Events;
 using Core.Infrastructure.JasminClient;
 using Core.Infrastructure.JasminClient.Dtos;
@@ -13,14 +14,11 @@ public class EventMapperTests
     {
         // Arrange
         var dto = new EventResponseDto(
-            ServerName: "test-server",
-            EventType: "Started",
+            EventType: "mcp-server.instance.started",
+            Target: "mcp-servers/test-server/instances/inst-123",
             Timestamp: "2024-01-15T10:30:00Z",
-            Errors: null,
-            InstanceId: "inst-123",
-            RequestId: "req-456",
-            OldConfiguration: null,
-            Configuration: null);
+            Payload: null,
+            RequestId: "req-456");
 
         // Act
         var result = EventMapper.ToDomain(dto);
@@ -34,23 +32,25 @@ public class EventMapperTests
         result.Errors.Should().BeNull();
     }
 
-    [Fact(DisplayName = "MAP-002: ToDomain should map errors correctly")]
+    [Fact(DisplayName = "MAP-002: ToDomain should map errors from payload correctly")]
     public void MAP002()
     {
         // Arrange
-        var dto = new EventResponseDto(
-            ServerName: "server",
-            EventType: "StartFailed",
-            Timestamp: "2024-01-15T10:30:00Z",
-            Errors: new List<EventErrorDto>
+        var payload = JsonSerializer.SerializeToElement(new
+        {
+            errors = new[]
             {
-                new("ERR001", "Connection failed"),
-                new("ERR002", "Timeout")
-            },
-            InstanceId: null,
-            RequestId: null,
-            OldConfiguration: null,
-            Configuration: null);
+                new { code = "ERR001", message = "Connection failed" },
+                new { code = "ERR002", message = "Timeout" }
+            }
+        });
+
+        var dto = new EventResponseDto(
+            EventType: "mcp-server.instance.start-failed",
+            Target: "mcp-servers/server",
+            Timestamp: "2024-01-15T10:30:00Z",
+            Payload: payload,
+            RequestId: null);
 
         // Act
         var result = EventMapper.ToDomain(dto);
@@ -62,22 +62,26 @@ public class EventMapperTests
         result.Errors[1].Code.Should().Be("ERR002");
     }
 
-    [Fact(DisplayName = "MAP-003: ToDomain should map configuration correctly")]
+    [Fact(DisplayName = "MAP-003: ToDomain should map configuration from payload correctly")]
     public void MAP003()
     {
         // Arrange
+        var payload = JsonSerializer.SerializeToElement(new
+        {
+            configuration = new
+            {
+                command = "npx",
+                args = new[] { "-y", "@modelcontextprotocol/server-filesystem" },
+                env = new Dictionary<string, string> { ["PATH"] = "/usr/bin" }
+            }
+        });
+
         var dto = new EventResponseDto(
-            ServerName: "server",
-            EventType: "ConfigurationCreated",
+            EventType: "mcp-server.configuration.created",
+            Target: "mcp-servers/server",
             Timestamp: "2024-01-15T10:30:00Z",
-            Errors: null,
-            InstanceId: null,
-            RequestId: null,
-            OldConfiguration: null,
-            Configuration: new EventConfigurationDto(
-                Command: "npx",
-                Args: new List<string> { "-y", "@modelcontextprotocol/server-filesystem" },
-                Env: new Dictionary<string, string> { ["PATH"] = "/usr/bin" }));
+            Payload: payload,
+            RequestId: null);
 
         // Act
         var result = EventMapper.ToDomain(dto);
@@ -89,28 +93,98 @@ public class EventMapperTests
         result.Configuration.Env.Should().ContainKey("PATH");
     }
 
-    [Theory(DisplayName = "MAP-004: ToDomain should parse event types case-insensitively")]
-    [InlineData("started", McpServerEventType.Started)]
-    [InlineData("STARTED", McpServerEventType.Started)]
-    [InlineData("Started", McpServerEventType.Started)]
-    [InlineData("toolInvoked", McpServerEventType.ToolInvoked)]
-    public void MAP004(string eventTypeString, McpServerEventType expectedType)
+    [Fact(DisplayName = "MAP-004: ToDomain should throw for unknown event type")]
+    public void MAP004()
     {
         // Arrange
         var dto = new EventResponseDto(
-            ServerName: "server",
-            EventType: eventTypeString,
+            EventType: "unknown.event.type",
+            Target: "mcp-servers/server",
             Timestamp: "2024-01-15T10:30:00Z",
-            Errors: null,
-            InstanceId: null,
-            RequestId: null,
-            OldConfiguration: null,
-            Configuration: null);
+            Payload: null,
+            RequestId: null);
+
+        // Act
+        var act = () => EventMapper.ToDomain(dto);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Unknown event type*");
+    }
+
+    [Fact(DisplayName = "MAP-005: ToDomain should extract serverName from server-only target")]
+    public void MAP005()
+    {
+        // Arrange
+        var dto = new EventResponseDto(
+            EventType: "mcp-server.created",
+            Target: "mcp-servers/my-server",
+            Timestamp: "2024-01-15T10:30:00Z",
+            Payload: null,
+            RequestId: null);
 
         // Act
         var result = EventMapper.ToDomain(dto);
 
         // Assert
-        result.EventType.Should().Be(expectedType);
+        result.ServerName.Should().Be("my-server");
+        result.InstanceId.Should().BeNull();
+    }
+
+    [Fact(DisplayName = "MAP-006: ToDomain should map newConfiguration and oldConfiguration from payload")]
+    public void MAP006()
+    {
+        // Arrange
+        var payload = JsonSerializer.SerializeToElement(new
+        {
+            oldConfiguration = new
+            {
+                command = "old-cmd",
+                args = new[] { "old-arg" },
+                env = new Dictionary<string, string>()
+            },
+            newConfiguration = new
+            {
+                command = "new-cmd",
+                args = new[] { "new-arg" },
+                env = new Dictionary<string, string> { ["KEY"] = "val" }
+            }
+        });
+
+        var dto = new EventResponseDto(
+            EventType: "mcp-server.configuration.updated",
+            Target: "mcp-servers/server",
+            Timestamp: "2024-01-15T10:30:00Z",
+            Payload: payload,
+            RequestId: null);
+
+        // Act
+        var result = EventMapper.ToDomain(dto);
+
+        // Assert
+        result.OldConfiguration.Should().NotBeNull();
+        result.OldConfiguration!.Command.Should().Be("old-cmd");
+        result.Configuration.Should().NotBeNull();
+        result.Configuration!.Command.Should().Be("new-cmd");
+    }
+
+    [Fact(DisplayName = "MAP-007: ToDomain should handle null payload gracefully")]
+    public void MAP007()
+    {
+        // Arrange
+        var dto = new EventResponseDto(
+            EventType: "mcp-server.instance.stopping",
+            Target: "mcp-servers/server/instances/inst-1",
+            Timestamp: "2024-01-15T10:30:00Z",
+            Payload: null,
+            RequestId: null);
+
+        // Act
+        var result = EventMapper.ToDomain(dto);
+
+        // Assert
+        result.Errors.Should().BeNull();
+        result.Configuration.Should().BeNull();
+        result.OldConfiguration.Should().BeNull();
     }
 }
