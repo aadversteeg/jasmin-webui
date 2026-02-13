@@ -1,6 +1,7 @@
 @using Core.Application.McpServers
 @using Core.Application.Events
 @using Core.Application.Storage
+@using Core.Domain.Events
 @using Core.Infrastructure.BlazorApp.ViewModels
 @inherits Blazing.Mvvm.Components.MvvmComponentBase<InstanceManagementViewModel>
 @inject IJSRuntime JS
@@ -85,50 +86,100 @@
                 }
             </LeftContent>
             <RightHeader>
-                <h6 class="mb-0">Stderr Logs</h6>
-                <div class="d-flex gap-2 align-items-center">
-                    @if (!string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
-                    {
-                        @if (ViewModel.IsLogStreamConnected)
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <ul class="nav nav-tabs instance-tabs mb-0">
+                        <li class="nav-item">
+                            <a class="nav-link @(_activeTab == LogsTab ? "active" : "")"
+                               href="#" @onclick="() => SwitchTab(LogsTab)" @onclick:preventDefault>
+                                Logs
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(_activeTab == EventsTab ? "active" : "")"
+                               href="#" @onclick="() => SwitchTab(EventsTab)" @onclick:preventDefault>
+                                Events
+                                @if (GetInstanceEventCount() > 0)
+                                {
+                                    <span class="badge bg-secondary ms-1">@GetInstanceEventCount()</span>
+                                }
+                            </a>
+                        </li>
+                    </ul>
+                    <div class="d-flex gap-2 align-items-center">
+                        @if (!string.IsNullOrEmpty(ViewModel.SelectedInstanceId) && _activeTab == LogsTab)
                         {
-                            <span class="badge bg-success">Connected</span>
+                            @if (ViewModel.IsLogStreamConnected)
+                            {
+                                <span class="badge bg-success">Connected</span>
+                            }
+                            else if (!string.IsNullOrEmpty(ViewModel.LogStreamError))
+                            {
+                                <span class="badge bg-danger" title="@ViewModel.LogStreamError">Error</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Connecting...</span>
+                            }
                         }
-                        else if (!string.IsNullOrEmpty(ViewModel.LogStreamError))
-                        {
-                            <span class="badge bg-danger" title="@ViewModel.LogStreamError">Error</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-warning">Connecting...</span>
-                        }
-                    }
+                    </div>
                 </div>
             </RightHeader>
             <RightContent>
                 @if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
                 {
                     <div class="text-center py-4">
-                        <p class="text-muted">Select an instance to view its logs.</p>
+                        <p class="text-muted">Select an instance to view its logs and events.</p>
                     </div>
                 }
-                else if (ViewModel.LogEntries.Count == 0 && !ViewModel.IsLogStreamConnected)
+                else if (_activeTab == LogsTab)
                 {
-                    <div class="text-center py-4">
-                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                        <p class="mt-2 text-muted">Connecting to log stream...</p>
-                    </div>
+                    @if (ViewModel.LogEntries.Count == 0 && !ViewModel.IsLogStreamConnected)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
+                            <p class="mt-2 text-muted">Connecting to log stream...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="log-entries" id="instance-log-container">
+                            @foreach (var entry in ViewModel.LogEntries)
+                            {
+                                <div class="log-line">
+                                    <span class="log-timestamp">@entry.Timestamp.ToLocalTime().ToString("HH:mm:ss.fff")</span>
+                                    <span class="log-text">@entry.Text</span>
+                                </div>
+                            }
+                        </div>
+                    }
                 }
-                else
+                else if (_activeTab == EventsTab)
                 {
-                    <div class="log-entries" id="instance-log-container">
-                        @foreach (var entry in ViewModel.LogEntries)
-                        {
-                            <div class="log-line">
-                                <span class="log-timestamp">@entry.Timestamp.ToLocalTime().ToString("HH:mm:ss.fff")</span>
-                                <span class="log-text">@entry.Text</span>
-                            </div>
-                        }
-                    </div>
+                    var instanceEvents = ViewModel.InstanceEvents;
+                    @if (!instanceEvents.Any())
+                    {
+                        <div class="text-center py-4">
+                            <p class="text-muted">No events yet for this instance.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="instance-events-area" id="instance-events-container">
+                            <ExpandableListHeader
+                                TimestampLabel="Last event at"
+                                Timestamp="@instanceEvents.LastOrDefault()?.Timestamp"
+                                OnExpandAll="ExpandAllEvents"
+                                OnCollapseAll="CollapseAllEvents" />
+
+                            @foreach (var evt in instanceEvents)
+                            {
+                                var eventId = InstanceManagementViewModel.GetEventId(evt);
+                                <EventCard Event="evt"
+                                           IsExpanded="@ViewModel.EventExpandState.IsExpanded(eventId)"
+                                           OnToggle="() => ViewModel.EventExpandState.ToggleExpand(eventId)" />
+                            }
+                        </div>
+                    }
                 }
             </RightContent>
         </SplitPanel>
@@ -144,8 +195,14 @@
 </ModalDialog>
 
 @code {
+    private const string LogsTab = "logs";
+    private const string EventsTab = "events";
+
     private double _panelWidthPercent = 33;
     private bool _autoScroll = true;
+    private string _activeTab = LogsTab;
+    private bool _eventsAutoScroll = true;
+    private bool _pendingEventsScrollToBottom;
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,6 +211,24 @@
         _panelWidthPercent = UserPreferences.InstanceManagementPanelWidthPercent;
         ViewModel.InstancesChanged += HandleInstancesChanged;
         ViewModel.LogEntriesChanged += HandleLogEntriesChanged;
+        ViewModel.EventsChanged += HandleEventsChanged;
+        ViewModel.EventExpandState.StateChanged += HandleExpandStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingEventsScrollToBottom)
+        {
+            _pendingEventsScrollToBottom = false;
+            try
+            {
+                await JS.InvokeVoidAsync("scrollHelper.scrollToBottom", "instance-events-container");
+            }
+            catch
+            {
+                // Element may not exist yet
+            }
+        }
     }
 
     private void HandleWidthChanged(double newPercent)
@@ -172,15 +247,34 @@
         InvokeAsync(async () =>
         {
             StateHasChanged();
-            await AutoScrollIfNeeded();
+            if (_activeTab == LogsTab)
+            {
+                await AutoScrollLogsIfNeeded();
+            }
         });
     }
 
-    private async Task AutoScrollIfNeeded()
+    private void HandleEventsChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (_activeTab == EventsTab)
+            {
+                await AutoScrollEventsIfNeeded();
+            }
+        });
+    }
+
+    private void HandleExpandStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task AutoScrollLogsIfNeeded()
     {
         if (_autoScroll)
         {
-            // Small delay to let the DOM update
             await Task.Yield();
             try
             {
@@ -205,12 +299,73 @@
         }
     }
 
+    private async Task AutoScrollEventsIfNeeded()
+    {
+        if (_eventsAutoScroll)
+        {
+            await Task.Yield();
+            try
+            {
+                _eventsAutoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "instance-events-container");
+                await JS.InvokeVoidAsync("scrollHelper.scrollToBottom", "instance-events-container");
+            }
+            catch
+            {
+                // Element may not exist yet
+            }
+        }
+        else
+        {
+            try
+            {
+                _eventsAutoScroll = await JS.InvokeAsync<bool>("scrollHelper.isScrolledToBottom", "instance-events-container");
+            }
+            catch
+            {
+                // Element may not exist yet
+            }
+        }
+    }
+
+    private void SwitchTab(string tab)
+    {
+        _activeTab = tab;
+        if (tab == EventsTab)
+        {
+            _eventsAutoScroll = true;
+            _pendingEventsScrollToBottom = true;
+        }
+        else
+        {
+            _autoScroll = true;
+        }
+    }
+
+    private int GetInstanceEventCount()
+    {
+        if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
+            return 0;
+        return ViewModel.InstanceEvents.Count;
+    }
+
+    private void ExpandAllEvents()
+    {
+        ViewModel.ExpandAllInstanceEvents();
+    }
+
+    private void CollapseAllEvents()
+    {
+        ViewModel.CollapseAllInstanceEvents();
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
             ViewModel.InstancesChanged -= HandleInstancesChanged;
             ViewModel.LogEntriesChanged -= HandleLogEntriesChanged;
+            ViewModel.EventsChanged -= HandleEventsChanged;
+            ViewModel.EventExpandState.StateChanged -= HandleExpandStateChanged;
         }
         base.Dispose(disposing);
     }
@@ -228,6 +383,7 @@
     private async Task HandleSelectInstance(string instanceId)
     {
         _autoScroll = true;
+        _eventsAutoScroll = true;
         await ViewModel.SelectInstanceCommand.ExecuteAsync(instanceId);
     }
 

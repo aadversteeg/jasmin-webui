@@ -4,6 +4,7 @@ using Core.Application.Storage;
 using Core.Domain.Events;
 using Core.Infrastructure.BlazorApp.ViewModels;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Tests.Infrastructure.BlazorApp.Helpers;
 using Xunit;
@@ -16,6 +17,7 @@ public class InstanceManagementViewModelTests
     private readonly Mock<IApplicationStateService> _appStateMock;
     private readonly Mock<IEventStreamService> _eventStreamMock;
     private readonly Mock<IInstanceLogService> _logServiceMock;
+    private readonly EventViewerViewModel _eventViewerViewModel;
     private readonly InstanceManagementViewModel _sut;
 
     public InstanceManagementViewModelTests()
@@ -32,11 +34,32 @@ public class InstanceManagementViewModelTests
             .ReturnsAsync(ToolInvocationServiceResult<IReadOnlyList<McpServerInstance>>.Success(
                 Array.Empty<McpServerInstance>()));
 
+        var preferencesMock = new Mock<IUserPreferencesService>();
+        preferencesMock.Setup(x => x.KnownServers).Returns(new List<string>());
+        preferencesMock.Setup(x => x.SelectedServers).Returns(new List<string>());
+        preferencesMock.Setup(x => x.EnabledEventTypes).Returns(new HashSet<int>());
+        preferencesMock.Setup(x => x.IsServerFilterExpanded).Returns(true);
+        preferencesMock.Setup(x => x.IsEventTypeFilterExpanded).Returns(true);
+        var filterViewModel = new EventFilterViewModel(
+            preferencesMock.Object,
+            new Mock<IJasminApiService>().Object,
+            new Mock<ILogger<EventFilterViewModel>>().Object);
+        var serverListViewModel = new McpServerListViewModel(
+            new Mock<IMcpServerListService>().Object,
+            _invocationServiceMock.Object);
+        _eventViewerViewModel = new EventViewerViewModel(
+            _eventStreamMock.Object,
+            _appStateMock.Object,
+            new Mock<IMcpServerDetailService>().Object,
+            filterViewModel,
+            serverListViewModel);
+
         _sut = new InstanceManagementViewModel(
             _invocationServiceMock.Object,
             _appStateMock.Object,
             _eventStreamMock.Object,
-            _logServiceMock.Object);
+            _logServiceMock.Object,
+            _eventViewerViewModel);
     }
 
     [Fact(DisplayName = "IMV-001: IsOpen should default to false")]
@@ -296,5 +319,146 @@ public class InstanceManagementViewModelTests
 
         // Assert
         _sut.Instances.Should().HaveCount(2);
+    }
+
+    [Fact(DisplayName = "IMV-018: InstanceEvents should default to empty")]
+    public void IMV018()
+    {
+        _sut.InstanceEvents.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "IMV-019: SSE event should be stored and raise EventsChanged")]
+    public async Task IMV019()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+        var eventsChangedRaised = false;
+        _sut.EventsChanged += () => eventsChangedRaised = true;
+
+        var evt = new McpServerEvent(
+            "my-server",
+            McpServerEventType.ToolsRetrieving,
+            DateTimeOffset.UtcNow,
+            Errors: null,
+            InstanceId: "inst-1");
+
+        // Act
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt);
+
+        // Assert
+        eventsChangedRaised.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "IMV-020: InstanceEvents should filter by SelectedInstanceId")]
+    public async Task IMV020()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+        await _sut.SelectInstanceCommand.ExecuteAsync("inst-1");
+
+        var evt1 = new McpServerEvent("my-server", McpServerEventType.Started, DateTimeOffset.UtcNow, Errors: null, InstanceId: "inst-1");
+        var evt2 = new McpServerEvent("my-server", McpServerEventType.Started, DateTimeOffset.UtcNow, Errors: null, InstanceId: "inst-2");
+
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt1);
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt2);
+
+        // Act
+        var result = _sut.InstanceEvents;
+
+        // Assert
+        result.Should().HaveCount(1);
+        result[0].InstanceId.Should().Be("inst-1");
+    }
+
+    [Fact(DisplayName = "IMV-021: SSE events for other servers should be ignored")]
+    public async Task IMV021()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+        var eventsChangedRaised = false;
+        _sut.EventsChanged += () => eventsChangedRaised = true;
+
+        var evt = new McpServerEvent(
+            "other-server",
+            McpServerEventType.Started,
+            DateTimeOffset.UtcNow,
+            Errors: null,
+            InstanceId: "inst-1");
+
+        // Act
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt);
+
+        // Assert
+        eventsChangedRaised.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "IMV-022: CloseAsync should clear stored events")]
+    public async Task IMV022()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+        await _sut.SelectInstanceCommand.ExecuteAsync("inst-1");
+
+        var evt = new McpServerEvent("my-server", McpServerEventType.Started, DateTimeOffset.UtcNow, Errors: null, InstanceId: "inst-1");
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt);
+        _sut.InstanceEvents.Should().HaveCount(1);
+
+        // Act
+        await _sut.CloseCommand.ExecuteAsync(null);
+
+        // Assert
+        _sut.InstanceEvents.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "IMV-023: SSE Started event should both store event and add instance")]
+    public async Task IMV023()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+
+        var evt = new McpServerEvent(
+            "my-server",
+            McpServerEventType.Started,
+            DateTimeOffset.UtcNow,
+            Errors: null,
+            InstanceId: "inst-new");
+
+        // Act
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt);
+
+        // Assert - event stored and instance added
+        await _sut.SelectInstanceCommand.ExecuteAsync("inst-new");
+        _sut.InstanceEvents.Should().HaveCount(1);
+        _sut.Instances.Should().Contain(i => i.InstanceId == "inst-new");
+    }
+
+    [Fact(DisplayName = "IMV-024: GetEventId should produce deterministic identifier")]
+    public void IMV024()
+    {
+        // Arrange
+        var timestamp = new DateTimeOffset(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
+        var evt = new McpServerEvent("my-server", McpServerEventType.Started, timestamp, Errors: null, InstanceId: "inst-1");
+
+        // Act
+        var id = InstanceManagementViewModel.GetEventId(evt);
+
+        // Assert
+        id.Should().Be($"{timestamp.Ticks}_my-server_Started");
+    }
+
+    [Fact(DisplayName = "IMV-025: InstanceEvents should return empty when no instance selected")]
+    public async Task IMV025()
+    {
+        // Arrange
+        await _sut.OpenCommand.ExecuteAsync("my-server");
+
+        var evt = new McpServerEvent("my-server", McpServerEventType.Started, DateTimeOffset.UtcNow, Errors: null, InstanceId: "inst-1");
+        _eventStreamMock.Raise(x => x.EventReceived += null, _eventStreamMock.Object, evt);
+
+        // Act - no instance selected
+        var result = _sut.InstanceEvents;
+
+        // Assert
+        result.Should().BeEmpty();
     }
 }

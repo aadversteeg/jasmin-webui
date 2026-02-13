@@ -14,10 +14,14 @@ namespace Core.Infrastructure.BlazorApp.ViewModels;
 /// </summary>
 public partial class InstanceManagementViewModel : ViewModelBase
 {
+    private const int MaxEvents = 1000;
+
     private readonly IToolInvocationService _invocationService;
     private readonly IApplicationStateService _appState;
     private readonly IEventStreamService _eventStream;
     private readonly IInstanceLogService _logService;
+    private readonly EventViewerViewModel _eventViewer;
+    private readonly List<McpServerEvent> _serverEvents = new();
 
     [ObservableProperty]
     private bool _isOpen;
@@ -66,16 +70,36 @@ public partial class InstanceManagementViewModel : ViewModelBase
     /// </summary>
     public event Action? LogEntriesChanged;
 
+    /// <summary>
+    /// Child ViewModel for managing expanded state of event cards.
+    /// </summary>
+    public ExpandableItemsViewModel EventExpandState { get; } = new();
+
+    /// <summary>
+    /// Events filtered for the currently selected instance.
+    /// </summary>
+    public IReadOnlyList<McpServerEvent> InstanceEvents =>
+        string.IsNullOrEmpty(SelectedInstanceId)
+            ? Array.Empty<McpServerEvent>()
+            : _serverEvents.Where(e => e.InstanceId == SelectedInstanceId).ToList();
+
+    /// <summary>
+    /// Event raised when new events are received (for auto-scroll in the UI).
+    /// </summary>
+    public event Action? EventsChanged;
+
     public InstanceManagementViewModel(
         IToolInvocationService invocationService,
         IApplicationStateService appState,
         IEventStreamService eventStream,
-        IInstanceLogService logService)
+        IInstanceLogService logService,
+        EventViewerViewModel eventViewer)
     {
         _invocationService = invocationService;
         _appState = appState;
         _eventStream = eventStream;
         _logService = logService;
+        _eventViewer = eventViewer;
     }
 
     /// <summary>
@@ -89,6 +113,14 @@ public partial class InstanceManagementViewModel : ViewModelBase
         SelectedInstanceId = null;
         LogEntries.Clear();
         Instances.Clear();
+        _serverEvents.Clear();
+        EventExpandState.CollapseAll();
+
+        // Seed with existing events for this server from the main event viewer
+        _serverEvents.AddRange(
+            _eventViewer.Events.Where(e =>
+                string.Equals(e.ServerName, serverName, StringComparison.OrdinalIgnoreCase)));
+
         IsOpen = true;
 
         // Subscribe to events for automatic updates
@@ -268,6 +300,8 @@ public partial class InstanceManagementViewModel : ViewModelBase
         await DisconnectLogStreamAsync();
         SelectedInstanceId = null;
         LogEntries.Clear();
+        _serverEvents.Clear();
+        EventExpandState.CollapseAll();
         IsOpen = false;
     }
 
@@ -315,6 +349,14 @@ public partial class InstanceManagementViewModel : ViewModelBase
             return;
         }
 
+        // Store the event for the events tab
+        _serverEvents.Add(e);
+        while (_serverEvents.Count > MaxEvents)
+        {
+            _serverEvents.RemoveAt(0);
+        }
+        EventsChanged?.Invoke();
+
         switch (e.EventType)
         {
             case McpServerEventType.Started:
@@ -352,4 +394,22 @@ public partial class InstanceManagementViewModel : ViewModelBase
                 break;
         }
     }
+
+    /// <summary>
+    /// Gets a unique identifier for an event.
+    /// </summary>
+    public static string GetEventId(McpServerEvent evt)
+        => $"{evt.Timestamp.Ticks}_{evt.ServerName}_{evt.EventType}";
+
+    /// <summary>
+    /// Expands all events for the currently selected instance.
+    /// </summary>
+    public void ExpandAllInstanceEvents()
+        => EventExpandState.ExpandAll(InstanceEvents.Select(GetEventId));
+
+    /// <summary>
+    /// Collapses all events.
+    /// </summary>
+    public void CollapseAllInstanceEvents()
+        => EventExpandState.CollapseAll();
 }
