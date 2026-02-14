@@ -1,6 +1,6 @@
 @using Core.Application.McpServers
 
-<div class="parameter-input mb-3">
+<div class="parameter-input">
     <label class="form-label">
         <code>@Parameter.Name</code>
         @if (Parameter.Required)
@@ -9,13 +9,13 @@
         }
         @if (!string.IsNullOrEmpty(Parameter.Type))
         {
-            <span class="text-muted small ms-2">(@Parameter.Type)</span>
+            <span class="text-muted small type-hint">(@Parameter.Type)</span>
         }
     </label>
 
     @if (!string.IsNullOrEmpty(Parameter.Description))
     {
-        <div class="form-text mb-1">@Parameter.Description</div>
+        <div class="form-text description-text">@Parameter.Description</div>
     }
 
     @if (Parameter.EnumValues != null && Parameter.EnumValues.Count > 0)

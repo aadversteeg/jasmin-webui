@@ -1,6 +1,6 @@
 @using Core.Application.McpServers
 
-<div class="mb-3">
+<div class="argument-input">
     <label class="form-label" title="@Argument.Description">
         <code>@Argument.Name</code>
         @if (Argument.Required)
@@ -11,7 +11,7 @@
 
     @if (!string.IsNullOrEmpty(Argument.Description))
     {
-        <div class="form-text mb-1">@Argument.Description</div>
+        <div class="form-text description-text">@Argument.Description</div>
     }
 
     <input type="text"

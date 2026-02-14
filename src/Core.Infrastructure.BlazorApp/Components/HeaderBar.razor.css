@@ -4,8 +4,8 @@
     min-height: 70px;
     display: flex;
     align-items: center;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
+    background-color: var(--color-surface-2);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .header-bar ::deep .btn {

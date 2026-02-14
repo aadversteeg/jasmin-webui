@@ -10,47 +10,38 @@
 <PageTitle>Jasmin Event Viewer</PageTitle>
 
 <HeaderBar>
-    <div class="container-fluid">
-        <div class="row g-3 align-items-center">
-            <div class="col-auto">
-                <button class="btn btn-outline-secondary"
-                        @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
-                        title="@(LeftPanelVM.IsPanelOpen ? "Close details" : "Open details")">
-                    @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
-                </button>
-            </div>
-            <div class="col-auto">
-                <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
-                <span class="text-muted small">@GetConnectionText()</span>
-            </div>
-            <div class="col"></div>
-            <div class="col-auto d-flex gap-2">
-                <button class="btn btn-outline-secondary"
-                        @onclick="OpenConfiguration"
-                        title="Configure server connection">
-                    Configure
-                </button>
-                <button class="btn btn-outline-secondary" @onclick="() => ViewModel.ClearEventsCommand.Execute(null)">
-                    Clear
-                </button>
-                <button class="btn btn-outline-secondary"
-                        @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
-                        title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
-                    @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
-                </button>
+    <div class="header-toolbar">
+        <button class="btn btn-outline-secondary"
+                @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
+                title="@(LeftPanelVM.IsPanelOpen ? "Close details" : "Open details")">
+            @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+        </button>
+        <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
+        <span class="text-muted small">@GetConnectionText()</span>
+        <div class="header-actions">
+            <button class="btn btn-outline-secondary"
+                    @onclick="OpenConfiguration"
+                    title="Configure server connection">
+                Configure
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="() => ViewModel.ClearEventsCommand.Execute(null)">
+                Clear
+            </button>
+            <button class="btn btn-outline-secondary"
+                    @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
+                    title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
+                @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
+            </button>
+        </div>
+    </div>
+    @if (ViewModel.LastError != null)
+    {
+        <div class="header-error">
+            <div class="alert alert-danger small">
+                @ViewModel.LastError
             </div>
         </div>
-        @if (ViewModel.LastError != null)
-        {
-            <div class="row mt-2">
-                <div class="col">
-                    <div class="alert alert-danger py-2 mb-0 small">
-                        @ViewModel.LastError
-                    </div>
-                </div>
-            </div>
-        }
-    </div>
+    }
 </HeaderBar>
 
 <ConfigurationDialog />
@@ -59,23 +50,16 @@
 <div class="events-area" id="events-container" @onscroll="OnScroll">
     @if (!FilteredEvents.Any())
     {
-        <div class="empty-state">
-            @if (!ViewModel.Events.Any())
-            {
-                <div class="empty-state-icon">&#128225;</div>
-                <p>No events yet.</p>
-                @if (!IsConnected)
-                {
-                    <p class="text-muted small">Connect to a jasmin-server to start receiving events.</p>
-                }
-            }
-            else
-            {
-                <div class="empty-state-icon">&#128269;</div>
-                <p>No events match the current filters.</p>
-                <p class="text-muted small">Try adjusting the server or event type filters.</p>
-            }
-        </div>
+        @if (!ViewModel.Events.Any())
+        {
+            <EmptyState Icon="&#128225;" Message="No events yet."
+                        SecondaryMessage="@(!IsConnected ? "Connect to a jasmin-server to start receiving events." : null)" />
+        }
+        else
+        {
+            <EmptyState Icon="&#128269;" Message="No events match the current filters."
+                        SecondaryMessage="Try adjusting the server or event type filters." />
+        }
     }
     else
     {

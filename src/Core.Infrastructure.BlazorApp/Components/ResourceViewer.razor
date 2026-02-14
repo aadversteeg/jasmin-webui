@@ -18,26 +18,26 @@
             @if (ViewModel.IsStartingInstance)
             {
                 <div class="loading-overlay">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Starting...</span>
+                    <div class="spinner text-primary" role="status">
+                        <span class="sr-only">Starting...</span>
                     </div>
-                    <p class="mt-2">Starting server instance...</p>
+                    <p class="loading-label">Starting server instance...</p>
                 </div>
             }
             else if (ViewModel.IsLoading)
             {
                 <div class="loading-overlay">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                    <div class="spinner text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
                     </div>
-                    <p class="mt-2">Loading resource...</p>
+                    <p class="loading-label">Loading resource...</p>
                 </div>
             }
             else if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
             {
-                <div class="alert alert-danger m-3">
+                <div class="alert alert-danger error-alert">
                     <strong>Error:</strong> @ViewModel.ErrorMessage
-                    <div class="mt-2">
+                    <div class="error-actions">
                         <button class="btn btn-outline-primary btn-sm" @onclick="HandleRetry">
                             Retry
                         </button>
@@ -52,11 +52,11 @@
             }
             else
             {
-                <div class="d-flex flex-column align-items-center justify-content-center h-100">
-                    <div class="spinner-border text-secondary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <div class="loading-overlay">
+                    <div class="spinner text-secondary" role="status">
+                        <span class="sr-only">Loading...</span>
                     </div>
-                    <p class="mt-2 text-muted">Preparing resource...</p>
+                    <p class="loading-label text-muted">Preparing resource...</p>
                 </div>
             }
         </div>
@@ -180,7 +180,7 @@
             }
 
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "markdown-content p-3");
+            builder.AddAttribute(1, "class", "markdown-content");
             builder.AddMarkupContent(2, html);
             builder.CloseElement();
             return;
@@ -202,7 +202,7 @@
         {
             var formatted = FormatJson(text);
             builder.OpenElement(0, "pre");
-            builder.AddAttribute(1, "class", "code-content m-0");
+            builder.AddAttribute(1, "class", "code-content");
             builder.OpenElement(2, "code");
             builder.AddAttribute(3, "class", "language-json");
             builder.AddContent(4, formatted);
@@ -216,7 +216,7 @@
         {
             var languageClass = GetPrismLanguageClass(mimeType);
             builder.OpenElement(0, "pre");
-            builder.AddAttribute(1, "class", "code-content m-0");
+            builder.AddAttribute(1, "class", "code-content");
             builder.OpenElement(2, "code");
             builder.AddAttribute(3, "class", languageClass);
             builder.AddContent(4, text);
@@ -227,7 +227,7 @@
 
         // Plain text
         builder.OpenElement(0, "pre");
-        builder.AddAttribute(1, "class", "text-content m-0 p-3");
+        builder.AddAttribute(1, "class", "text-content");
         builder.AddContent(2, text);
         builder.CloseElement();
     }
@@ -239,11 +239,11 @@
         {
             var dataUri = $"data:{mimeType};base64,{blob}";
             builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "image-content p-3 text-center");
+            builder.AddAttribute(1, "class", "image-content text-center");
             builder.OpenElement(2, "img");
             builder.AddAttribute(3, "src", dataUri);
             builder.AddAttribute(4, "alt", uri);
-            builder.AddAttribute(5, "class", "img-fluid");
+            builder.AddAttribute(5, "class", "resource-image");
             builder.CloseElement();
             builder.CloseElement();
             return;
@@ -255,10 +255,10 @@
         var sizeDisplay = FormatSize(size);
 
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "binary-content p-3");
+        builder.AddAttribute(1, "class", "binary-content");
 
         builder.OpenElement(2, "div");
-        builder.AddAttribute(3, "class", "d-flex justify-content-between align-items-center mb-3");
+        builder.AddAttribute(3, "class", "binary-header");
         builder.OpenElement(4, "span");
         builder.AddContent(5, $"Binary content: {sizeDisplay} ({mimeType})");
         builder.CloseElement();
@@ -280,7 +280,7 @@
         {
             var hexDump = GetHexDump(bytes);
             builder.OpenElement(11, "pre");
-            builder.AddAttribute(12, "class", "hex-content m-0");
+            builder.AddAttribute(12, "class", "hex-content");
             builder.AddContent(13, hexDump);
             builder.CloseElement();
         }

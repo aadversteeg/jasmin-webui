@@ -1,0 +1,50 @@
+<nav aria-label="@AriaLabel">
+    <ul class="nav nav-tabs @(Size == TabSize.Small ? "nav-tabs-sm" : "")" role="tablist">
+        @foreach (var tab in VisibleTabs)
+        {
+            <li class="nav-item" role="presentation">
+                <a class="nav-link @(tab.Id == ActiveTabId ? "active" : "")"
+                   href="@tab.Route"
+                   role="tab"
+                   aria-selected="@((tab.Id == ActiveTabId).ToString().ToLowerInvariant())"
+                   @onclick="() => OnTabClicked(tab)"
+                   @onclick:preventDefault>
+                    @tab.Label
+                    @if (BadgeCounts is not null && BadgeCounts.TryGetValue(tab.Id, out var count) && count > 0)
+                    {
+                        <span class="badge badge-secondary">@count</span>
+                    }
+                </a>
+            </li>
+        }
+    </ul>
+</nav>
+
+@code {
+    public enum TabSize { Default, Small }
+
+    [Parameter]
+    public IReadOnlyList<TabItem> Tabs { get; set; } = Array.Empty<TabItem>();
+
+    [Parameter]
+    public string ActiveTabId { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<TabItem> OnTabChanged { get; set; }
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Tabs";
+
+    [Parameter]
+    public TabSize Size { get; set; } = TabSize.Default;
+
+    [Parameter]
+    public IReadOnlyDictionary<string, int>? BadgeCounts { get; set; }
+
+    private IEnumerable<TabItem> VisibleTabs => Tabs.Where(t => t.IsVisible);
+
+    private async Task OnTabClicked(TabItem tab)
+    {
+        await OnTabChanged.InvokeAsync(tab);
+    }
+}

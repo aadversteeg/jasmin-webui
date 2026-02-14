@@ -15,33 +15,28 @@
 <PageTitle>@ServerName - Jasmin</PageTitle>
 
 <HeaderBar>
-    <div class="container-fluid">
-        <div class="row g-3 align-items-center">
-            <div class="col-auto">
-                <button class="btn btn-outline-secondary"
-                        @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
-                        title="@(LeftPanelVM.IsPanelOpen ? "Close servers" : "Open servers")">
-                    @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
-                </button>
-            </div>
-            <div class="col-auto">
-                <button class="btn btn-outline-secondary" @onclick="NavigateHome" title="Back to events">
-                    <svg width="1em" height="1em" viewBox="0 0 24 24"><path d="M12 3L4 9v12h16V9l-8-6z" fill="currentColor"/><rect x="10" y="13" width="4" height="8" fill="white"/></svg>
-                </button>
-            </div>
-            <div class="col-auto">
+    <div class="header-content">
+        <div class="header-left">
+            <button class="btn btn-outline-secondary"
+                    @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
+                    title="@(LeftPanelVM.IsPanelOpen ? "Close servers" : "Open servers")">
+                @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="NavigateHome" title="Back to events">
+                <svg width="1em" height="1em" viewBox="0 0 24 24"><path d="M12 3L4 9v12h16V9l-8-6z" fill="currentColor"/><rect x="10" y="13" width="4" height="8" fill="white"/></svg>
+            </button>
+            <div class="breadcrumb-text">
                 <span class="text-muted small">MCP Servers</span>
-                <span class="text-muted small mx-1">/</span>
-                <span class="small fw-bold">@ServerName</span>
+                <span class="text-muted small breadcrumb-separator">/</span>
+                <span class="small fw-500">@ServerName</span>
             </div>
-            <div class="col"></div>
-            <div class="col-auto d-flex gap-2">
-                <button class="btn btn-outline-secondary"
-                        @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
-                        title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
-                    @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
-                </button>
-            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-outline-secondary"
+                    @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
+                    title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
+                @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
+            </button>
         </div>
     </div>
 </HeaderBar>
@@ -49,10 +44,7 @@
 <div class="detail-area">
     @if (ViewModel.IsLoading)
     {
-        <div class="empty-state">
-            <div class="spinner-border text-secondary" role="status"></div>
-            <p class="mt-2">Loading server details...</p>
-        </div>
+        <LoadingState Label="Loading server details..." />
     }
     else if (ViewModel.LoadError != null)
     {

@@ -14,13 +14,13 @@
                     {
                         <span class="text-danger">*</span>
                     }
-                    <span class="text-muted small ms-2">(array)</span>
+                    <span class="text-muted small type-annotation">(array)</span>
                 </label>
             </div>
 
             @if (!string.IsNullOrEmpty(Parameter.Description))
             {
-                <div class="form-text mb-2">@Parameter.Description</div>
+                <div class="form-text field-description">@Parameter.Description</div>
             }
 
             @if (isObjectArray)
@@ -31,10 +31,10 @@
                     {
                         var index = i;
                         var isCollapsed = _collapsedItems.Contains(index);
-                        <div class="array-item card mb-2">
-                            <div class="card-header d-flex align-items-center py-1 px-2">
+                        <div class="array-item card">
+                            <div class="card-header card-header-row">
                                 <button type="button"
-                                        class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
+                                        class="btn btn-link btn-sm text-muted collapse-toggle"
                                         @onclick="() => ToggleCollapse(index)"
                                         title="@(isCollapsed ? "Expand" : "Collapse")">
                                     <span class="collapse-icon @(isCollapsed ? "collapsed" : "")">&#9662;</span>
@@ -45,7 +45,7 @@
                                     <span class="item-summary text-muted" title="@GetItemTooltip(index)">@GetItemSummary(index)</span>
                                 }
                                 <button type="button"
-                                        class="btn btn-outline-danger btn-sm py-0 px-1 ms-auto delete-btn"
+                                        class="btn btn-outline-danger btn-sm delete-btn"
                                         @onclick="() => RemoveItem(index)"
                                         title="Remove item">
                                     <span>&times;</span>
@@ -53,7 +53,7 @@
                             </div>
                             @if (!isCollapsed)
                             {
-                                <div class="card-body py-2 px-2">
+                                <div class="card-body">
                                     @foreach (var prop in Parameter.NestedSchema!.Parameters)
                                     {
                                         <SchemaBasedInput Parameter="prop"
@@ -73,21 +73,21 @@
                 <div class="primitive-array-items">
                     @if (ArrayItems.Count == 0)
                     {
-                        <div class="text-muted small mb-2">No items</div>
+                        <div class="text-muted small empty-list">No items</div>
                     }
                     else
                     {
                         @for (var i = 0; i < ArrayItems.Count; i++)
                         {
                             var index = i;
-                            <div class="primitive-array-item d-flex gap-2 align-items-center mb-1">
+                            <div class="primitive-array-item">
                                 <input type="@GetInputType(Parameter.ItemsType ?? "string")"
                                        class="form-control form-control-sm"
                                        value="@GetArrayItemValue(index)"
                                        @onchange="e => SetArrayItemValue(index, e.Value)"
                                        placeholder="Item @(index + 1)" />
                                 <button type="button"
-                                        class="btn btn-outline-danger btn-sm py-0 px-1 flex-shrink-0"
+                                        class="btn btn-outline-danger btn-sm delete-btn"
                                         @onclick="() => RemoveItem(index)"
                                         title="Remove item">
                                     <span>&times;</span>
@@ -99,7 +99,7 @@
             }
 
             <button type="button"
-                    class="btn btn-outline-secondary btn-sm mt-1"
+                    class="btn btn-outline-secondary btn-sm add-item-btn"
                     @onclick="AddItem">
                 + Add Item
             </button>
@@ -108,21 +108,21 @@
     else if (Parameter.Type.ToLowerInvariant() == "object" && Parameter.NestedSchema != null)
     {
         <div class="object-input">
-            <div class="object-header card mb-2">
-                <div class="card-header d-flex align-items-center py-1 px-2">
+            <div class="object-header card">
+                <div class="card-header card-header-row">
                     <button type="button"
-                            class="btn btn-link btn-sm p-0 me-2 text-muted collapse-toggle"
+                            class="btn btn-link btn-sm text-muted collapse-toggle"
                             @onclick="ToggleObjectCollapse"
                             title="@(_objectCollapsed ? "Expand" : "Collapse")">
                         <span class="collapse-icon @(_objectCollapsed ? "collapsed" : "")">&#9662;</span>
                     </button>
-                    <label class="form-label mb-0 object-label" title="@Parameter.Description">
+                    <label class="form-label object-label" title="@Parameter.Description">
                         <code>@Parameter.Name</code>
                         @if (Parameter.Required)
                         {
                             <span class="text-danger">*</span>
                         }
-                        <span class="text-muted small ms-2">(object)</span>
+                        <span class="text-muted small type-annotation">(object)</span>
                     </label>
                     @if (_objectCollapsed)
                     {
@@ -133,10 +133,10 @@
                 </div>
                 @if (!_objectCollapsed)
                 {
-                    <div class="card-body py-2 px-2">
+                    <div class="card-body">
                         @if (!string.IsNullOrEmpty(Parameter.Description))
                         {
-                            <div class="form-text mb-2">@Parameter.Description</div>
+                            <div class="form-text field-description">@Parameter.Description</div>
                         }
 
                         <div class="object-properties">
@@ -163,26 +163,26 @@
                 {
                     <span class="text-danger">*</span>
                 }
-                <span class="text-muted small ms-2">(key-value pairs)</span>
+                <span class="text-muted small type-annotation">(key-value pairs)</span>
             </label>
 
             @if (!string.IsNullOrEmpty(Parameter.Description))
             {
-                <div class="form-text mb-2">@Parameter.Description</div>
+                <div class="form-text field-description">@Parameter.Description</div>
             }
 
             <div class="key-value-items">
                 @if (KeyValueItems.Count == 0)
                 {
-                    <div class="text-muted small mb-2">No items defined</div>
+                    <div class="text-muted small empty-list">No items defined</div>
                 }
                 else
                 {
                     @for (var i = 0; i < KeyValueItems.Count; i++)
                     {
                         var index = i;
-                        <div class="key-value-item card mb-2">
-                            <div class="card-body py-2 px-2 d-flex gap-2 align-items-center">
+                        <div class="key-value-item card">
+                            <div class="card-body kv-row">
                                 <input type="text"
                                        class="form-control form-control-sm key-input"
                                        value="@KeyValueItems[index].Key"
@@ -216,7 +216,7 @@
                                            placeholder="Value" />
                                 }
                                 <button type="button"
-                                        class="btn btn-outline-danger btn-sm py-0 px-1"
+                                        class="btn btn-outline-danger btn-sm delete-btn"
                                         @onclick="() => RemoveKeyValueItem(index)"
                                         title="Remove item">
                                     <span>&times;</span>
@@ -237,7 +237,7 @@
     else
     {
         @* Primitive types *@
-        <div class="primitive-input mb-3">
+        <div class="primitive-input">
             <label class="form-label" title="@Parameter.Description">
                 <code>@Parameter.Name</code>
                 @if (Parameter.Required)
@@ -246,13 +246,13 @@
                 }
                 @if (!string.IsNullOrEmpty(Parameter.Type))
                 {
-                    <span class="text-muted small ms-2">(@Parameter.Type)</span>
+                    <span class="text-muted small type-annotation">(@Parameter.Type)</span>
                 }
             </label>
 
             @if (!string.IsNullOrEmpty(Parameter.Description))
             {
-                <div class="form-text mb-1">@Parameter.Description</div>
+                <div class="form-text field-description">@Parameter.Description</div>
             }
 
             @if (Parameter.EnumValues != null && Parameter.EnumValues.Count > 0)

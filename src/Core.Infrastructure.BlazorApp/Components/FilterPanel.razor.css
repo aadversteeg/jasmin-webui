@@ -1,5 +1,5 @@
 .filter-panel {
-    border-bottom: 1px solid #dee2e6;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .filter-panel-header {
@@ -7,24 +7,34 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-2);
     cursor: pointer;
     user-select: none;
 }
 
 .filter-panel-header:hover {
-    background-color: #e9ecef;
+    background-color: var(--color-surface-3);
 }
 
-.expand-icon {
-    font-size: 0.75rem;
-    color: #6c757d;
-    width: 1rem;
+.filter-panel-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
 }
 
 .filter-panel-title {
     font-weight: 500;
     font-size: 0.9rem;
+}
+
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.filter-action-btn {
+    padding: 0;
 }
 
 .filter-panel-body {
@@ -33,22 +43,26 @@
     overflow-y: auto;
 }
 
-.form-check {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-left: 0;
-    margin-bottom: 0.25rem;
-}
-
-.form-check-input {
-    margin: 0;
-    margin-top: 0.1rem;
-    flex-shrink: 0;
-}
-
 .form-check-label {
     font-size: 0.85rem;
-    margin-bottom: 0;
-    line-height: 1.2;
+}
+
+.form-check-label.deleted-item {
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.filter-item-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.deleted-indicator {
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    font-style: italic;
+    margin-left: auto;
+    padding-left: 0.5rem;
 }

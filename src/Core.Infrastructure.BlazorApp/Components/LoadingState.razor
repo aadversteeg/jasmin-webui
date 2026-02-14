@@ -1,0 +1,12 @@
+<div class="text-center loading-state">
+    <div class="spinner @(Small ? "spinner-sm" : "") text-secondary" role="status"></div>
+    <p class="loading-label text-muted">@Label</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "Loading...";
+
+    [Parameter]
+    public bool Small { get; set; }
+}

@@ -1,0 +1,19 @@
+<div class="empty-state">
+    <div class="empty-state-icon">@((MarkupString)Icon)</div>
+    <p>@Message</p>
+    @if (!string.IsNullOrEmpty(SecondaryMessage))
+    {
+        <p class="text-muted small">@SecondaryMessage</p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Icon { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Message { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? SecondaryMessage { get; set; }
+}

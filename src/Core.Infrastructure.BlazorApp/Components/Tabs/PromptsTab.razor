@@ -41,7 +41,7 @@
                     <ChildContent>
                     @if (prompt.Arguments.Count > 0)
                     {
-                        <table class="table table-sm table-bordered mb-0">
+                        <table class="table table-sm table-bordered params-table">
                             <thead class="table-light">
                                 <tr>
                                     <th>Argument</th>
@@ -67,7 +67,7 @@
                     }
                     else
                     {
-                        <p class="text-muted small mb-0">No arguments</p>
+                        <p class="text-muted small no-args-text">No arguments</p>
                     }
                     </ChildContent>
                 </ExpandableItemCard>
@@ -76,9 +76,9 @@
 
         @if (PromptsResult.Errors != null && PromptsResult.Errors.Count > 0)
         {
-            <div class="alert alert-warning mt-3">
+            <div class="alert alert-warning errors-alert">
                 <strong>Errors:</strong>
-                <ul class="mb-0">
+                <ul class="errors-list">
                     @foreach (var error in PromptsResult.Errors)
                     {
                         <li>@error.Code: @error.Message</li>

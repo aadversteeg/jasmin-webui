@@ -1,34 +1,52 @@
-.test-result {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
+/* Form group spacing */
+.form-group {
+    margin-bottom: var(--space-3);
 }
 
-.test-testing {
-    background-color: #cff4fc;
-    color: #055160;
+/* Spinner inside buttons needs trailing margin */
+.spinner {
+    margin-right: var(--space-1);
 }
 
-.test-success {
-    background-color: #d1e7dd;
-    color: #0f5132;
-}
-
-.test-failed {
-    background-color: #f8d7da;
-    color: #842029;
-}
-
-.test-icon {
-    font-weight: bold;
-}
-
-.spinner-border-sm {
+/* Small spinner size override */
+.spinner-sm {
     width: 1rem;
     height: 1rem;
+}
+
+/* Panel headers */
+.panel-title {
+    margin-bottom: 0;
+}
+
+/* View toggle row */
+.view-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--space-3);
+}
+
+/* Parse error message */
+.parse-error {
+    margin-top: var(--space-1);
+}
+
+/* Validation error alert */
+.validation-error {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+/* Loading spinner state */
+.loading-state {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-4) 0;
+}
+
+.loading-message {
+    margin-top: var(--space-2);
 }
 
 textarea.form-control {
@@ -53,7 +71,7 @@ textarea.form-control {
     min-width: 568px;
     overflow-y: auto;
     padding-right: 1rem;
-    border-right: 1px solid #dee2e6;
+    border-right: 1px solid var(--color-border);
 }
 
 .stderr-panel {
@@ -68,9 +86,9 @@ textarea.form-control {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #dee2e6;
-    margin-bottom: 0.5rem;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-2);
 }
 
 .stderr-content {
@@ -79,9 +97,9 @@ textarea.form-control {
 }
 
 .stderr-content .output-text {
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-2);
     padding: 1rem;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     white-space: pre-wrap;
     word-wrap: break-word;
     font-size: 0.875rem;

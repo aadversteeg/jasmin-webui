@@ -1,40 +1,56 @@
-/* Output styles */
-.output-container {
-    height: 100%;
-    overflow-y: auto;
+/* Panel headers */
+.panel-title {
+    margin-bottom: 0;
 }
 
-.output-text {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    margin-bottom: 0.5rem;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-size: 0.875rem;
+/* Toolbar layout */
+.toolbar-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
 }
 
-.output-json {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.8rem;
-    overflow-x: auto;
+/* Spinner inside buttons needs trailing margin */
+.spinner {
+    margin-right: var(--space-1);
 }
 
-.output-image img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 0.25rem;
+/* Parse error message */
+.parse-error {
+    margin-top: var(--space-1);
 }
 
-.output-resource {
-    padding: 0.5rem;
-    background-color: #e9ecef;
-    border-radius: 0.25rem;
-    margin-bottom: 0.5rem;
+/* Warning alert at top of output */
+.result-warning {
+    margin-bottom: var(--space-3);
 }
 
-.output-resource a {
-    word-break: break-all;
+/* Structured content details */
+.structured-details {
+    margin-top: var(--space-3);
+}
+
+.structured-content {
+    margin-top: var(--space-2);
+}
+
+/* Loading spinner state */
+.loading-state {
+    padding: var(--space-4) 0;
+}
+
+.loading-message {
+    margin-top: var(--space-2);
+}
+
+/* Footer layout */
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.footer-nav {
+    display: flex;
+    gap: var(--space-2);
 }

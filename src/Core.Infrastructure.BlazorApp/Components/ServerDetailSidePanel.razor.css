@@ -8,3 +8,11 @@
 .panel-title {
     margin-bottom: 0;
 }
+
+.server-info-content {
+    padding: var(--space-3);
+}
+
+.server-name {
+    margin-bottom: var(--space-1);
+}

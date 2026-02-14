@@ -13,15 +13,15 @@
             <div class="form-panel">
                 @if (ViewModel.IsLoading)
                 {
-                    <div class="d-flex justify-content-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                    <div class="loading-state">
+                        <div class="spinner text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
                         </div>
                     </div>
                 }
                 else
                 {
-                    <div class="d-flex justify-content-end mb-3">
+                    <div class="view-toggle-row">
                         <button class="btn btn-outline-secondary btn-sm"
                                 @onclick="ToggleInputMode"
                                 disabled="@IsTesting"
@@ -32,7 +32,7 @@
 
                     @if (ViewModel.IsJsonMode)
                     {
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
                             <input type="text"
                                    class="form-control"
@@ -47,7 +47,7 @@
                             }
                         </div>
 
-                        <div class="mb-3">
+                        <div class="form-group">
                             <label class="form-label">Configuration (JSON)</label>
                             <textarea class="form-control font-monospace"
                                       rows="15"
@@ -57,14 +57,14 @@
                                       placeholder='{"command": "npx", "args": [], "env": {}}'></textarea>
                             @if (!string.IsNullOrEmpty(ViewModel.JsonParseError))
                             {
-                                <div class="text-danger small mt-1">@ViewModel.JsonParseError</div>
+                                <div class="text-danger small parse-error">@ViewModel.JsonParseError</div>
                             }
                             <div class="form-text">JSON with command, args (array), and env (object)</div>
                         </div>
                     }
                     else
                     {
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
                         <input type="text"
                                class="form-control"
@@ -79,7 +79,7 @@
                         }
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
                         <input type="text"
                                class="form-control"
@@ -91,13 +91,13 @@
                         <div class="form-text">The executable command (e.g., npx, docker, dotnet)</div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <SchemaBasedInput Parameter="@ArgumentsParameter"
                                           Value="@GetArgumentsValue()"
                                           OnValueChanged="OnArgumentsChanged" />
                     </div>
 
-                    <div class="mb-3">
+                    <div class="form-group">
                         <SchemaBasedInput Parameter="@EnvironmentVariablesParameter"
                                           Value="@GetEnvironmentVariablesValue()"
                                           OnValueChanged="OnEnvironmentVariablesChanged" />
@@ -106,7 +106,7 @@
 
                     @if (!ViewModel.IsEditMode)
                     {
-                        <div class="form-check mb-3">
+                        <div class="form-check form-group">
                             <input type="checkbox"
                                    class="form-check-input"
                                    id="autoRefreshMetadata"
@@ -121,7 +121,7 @@
 
                     @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
                     {
-                        <div class="alert alert-danger py-2 mb-3">
+                        <div class="alert alert-danger validation-error">
                             @ViewModel.ValidationError
                         </div>
                     }
@@ -131,7 +131,7 @@
                         <div class="test-result @GetTestResultClass()">
                             @if (ViewModel.TestState == ConnectionTestState.Testing)
                             {
-                                <span class="spinner-border spinner-border-sm"></span>
+                                <span class="spinner spinner-sm"></span>
                                 <span>Testing configuration...</span>
                             }
                             else if (ViewModel.TestState == ConnectionTestState.Success)
@@ -153,7 +153,7 @@
             {
                 <div class="stderr-panel">
                     <div class="stderr-header">
-                        <h6 class="mb-0">Stderr Output</h6>
+                        <h6 class="panel-title">Stderr Output</h6>
                         <button class="btn btn-sm btn-outline-secondary"
                                 @onclick="() => ViewModel.CollapseStderrPanelCommand.Execute(null)"
                                 title="Hide panel">&#10005;</button>
@@ -161,10 +161,7 @@
                     <div class="stderr-content">
                         @if (ViewModel.TestState == ConnectionTestState.Testing)
                         {
-                            <div class="text-center py-4">
-                                <div class="spinner-border text-secondary" role="status"></div>
-                                <p class="mt-2 text-muted">Testing configuration...</p>
-                            </div>
+                            <LoadingState Label="Testing configuration..." />
                         }
                         else if (ViewModel.StderrLines.Count > 0)
                         {
@@ -186,7 +183,7 @@
                 disabled="@(!CanTest)">
             @if (IsTesting)
             {
-                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span class="spinner spinner-sm"></span>
                 <span>Testing...</span>
             }
             else
@@ -205,7 +202,7 @@
                 disabled="@(!CanSave || ViewModel.IsRefreshingMetadata)">
             @if (ViewModel.IsRefreshingMetadata)
             {
-                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span class="spinner spinner-sm"></span>
                 <span>Refreshing...</span>
             }
             else

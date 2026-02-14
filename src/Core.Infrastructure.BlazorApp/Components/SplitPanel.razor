@@ -3,7 +3,7 @@
 <div id="@ContainerId" class="split-container" @onkeydown="HandleKeyDown" tabindex="0">
     @* Left Panel *@
     <div class="split-panel left-panel @LeftPanelClass" style="width: @(_leftWidthPercent)%;">
-        <div class="panel-header d-flex justify-content-between align-items-center">
+        <div class="panel-header">
             @LeftHeader
         </div>
         <div class="panel-content">
@@ -16,7 +16,7 @@
 
     @* Right Panel *@
     <div class="split-panel right-panel @RightPanelClass" style="width: @(100 - _leftWidthPercent)%;">
-        <div class="panel-header d-flex justify-content-between align-items-center">
+        <div class="panel-header">
             @RightHeader
         </div>
         <div class="panel-content @RightContentClass">

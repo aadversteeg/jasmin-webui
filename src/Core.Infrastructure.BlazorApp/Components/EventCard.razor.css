@@ -1,6 +1,6 @@
 .event-card {
     background-color: var(--event-card-bg);
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--color-border);
     border-radius: var(--event-border-radius);
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
@@ -18,24 +18,31 @@
 }
 
 .event-card.event-error {
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid var(--color-danger);
 }
 
 .event-card.event-success {
-    border-left: 4px solid #198754;
+    border-left: 4px solid var(--color-success);
 }
 
 .event-card.event-info {
-    border-left: 4px solid #0d6efd;
+    border-left: 4px solid var(--color-primary);
 }
 
 .event-card.event-warning {
-    border-left: 4px solid #ffc107;
+    border-left: 4px solid var(--color-warning);
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .event-heading {
     font-size: 0.95rem;
     font-weight: 600;
+    margin-bottom: 0;
 }
 
 .event-meta {
@@ -48,14 +55,67 @@
 
 .expand-icon {
     font-size: 0.65rem;
-    color: #6c757d;
+    color: var(--color-text-muted);
     user-select: none;
 }
 
+.event-ids {
+    margin-top: var(--space-1);
+}
+
+.event-id-item {
+    margin-right: var(--space-3);
+}
+
+.event-error-summary {
+    margin-top: var(--space-2);
+}
+
+.event-error-alert {
+    padding: var(--space-1) var(--space-2);
+    margin-bottom: 0;
+}
+
 .event-details {
-    border-top: 1px solid #e9ecef;
+    border-top: 1px solid var(--color-surface-3);
     padding-top: 0.75rem;
+    margin-top: var(--space-3);
     cursor: default;
+}
+
+.event-details-table {
+    margin-bottom: 0;
+}
+
+.event-section {
+    margin-top: var(--space-2);
+}
+
+.event-section-content {
+    margin-top: var(--space-1);
+}
+
+.event-env-section {
+    margin-top: var(--space-1);
+}
+
+.event-env-list {
+    margin-bottom: 0;
+    padding-left: var(--space-3);
+}
+
+.event-error-detail {
+    padding: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-1);
+    margin-top: var(--space-1);
+}
+
+.event-raw-section {
+    margin-top: var(--space-3);
+}
+
+.raw-event-data {
+    margin-bottom: 0;
 }
 
 .event-details table th {
@@ -73,10 +133,10 @@
 
 .config-block {
     font-size: 0.85rem;
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-2);
     padding: 0.5rem 0.75rem;
     border-radius: 0.25rem;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--color-surface-3);
 }
 
 .raw-event-data {
@@ -92,7 +152,7 @@
 
 .event-timestamp {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: var(--color-text-muted);
     font-family: monospace;
 }
 
@@ -107,7 +167,7 @@
 
 .event-server-name {
     font-family: monospace;
-    background-color: #e9ecef;
+    background-color: var(--color-surface-3);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
     font-size: 0.875rem;

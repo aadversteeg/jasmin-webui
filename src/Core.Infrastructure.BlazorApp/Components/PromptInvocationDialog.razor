@@ -17,8 +17,8 @@
                     OnKeyDown="HandleKeyDown"
                     OnWidthChanged="HandleWidthChanged">
             <LeftHeader>
-                <h6 class="mb-0">Arguments</h6>
-                <div class="d-flex gap-2 align-items-center">
+                <h6 class="panel-title">Arguments</h6>
+                <div class="toolbar-row">
                     @* History navigation *@
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary"
@@ -66,12 +66,12 @@
                             disabled="@(!CanInvoke())">
                         @if (ViewModel.IsStartingInstance)
                         {
-                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span class="spinner spinner-sm" role="status"></span>
                             <span>Starting...</span>
                         }
                         else if (ViewModel.IsInvoking)
                         {
-                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span class="spinner spinner-sm" role="status"></span>
                             <span>Getting...</span>
                         }
                         else
@@ -105,7 +105,7 @@
                                   placeholder="Enter JSON arguments..."></textarea>
                         @if (!string.IsNullOrEmpty(_jsonParseError))
                         {
-                            <div class="text-danger small mt-1">@_jsonParseError</div>
+                            <div class="text-danger small parse-error">@_jsonParseError</div>
                         }
                     }
                     else
@@ -126,7 +126,7 @@
                 }
             </LeftContent>
             <RightHeader>
-                <h6 class="mb-0">Output</h6>
+                <h6 class="panel-title">Output</h6>
                 @{
                     var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
                 }
@@ -146,7 +146,7 @@
                 {
                     @if (!string.IsNullOrEmpty(ViewModel.Result.Description))
                     {
-                        <div class="alert alert-info mb-3">
+                        <div class="alert alert-info result-description">
                             @ViewModel.Result.Description
                         </div>
                     }
@@ -154,8 +154,8 @@
                     <div class="output-container">
                         @foreach (var message in ViewModel.Result.Messages)
                         {
-                            <div class="prompt-message mb-3">
-                                <div class="message-role small text-muted mb-1">
+                            <div class="prompt-message">
+                                <div class="message-role small text-muted">
                                     <strong>@message.Role</strong>
                                 </div>
                                 @if (message.Content.Type == "text" && !string.IsNullOrEmpty(message.Content.Text))
@@ -180,10 +180,7 @@
                 }
                 else if (ViewModel.IsInvoking)
                 {
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-secondary" role="status"></div>
-                        <p class="mt-2 text-muted">Getting prompt...</p>
-                    </div>
+                    <LoadingState Label="Getting prompt..." />
                 }
                 else
                 {
@@ -194,8 +191,8 @@
     </ChildContent>
 
     <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div class="d-flex gap-2">
+        <div class="footer-row">
+            <div class="footer-nav">
                 <button class="btn btn-outline-secondary"
                         disabled="@(!ViewModel.CanGoPreviousPrompt)"
                         @onclick="HandlePreviousPrompt"

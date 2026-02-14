@@ -1,23 +1,8 @@
 @inject INavigationService NavigationService
 
 <div class="tabbed-view">
-    <nav aria-label="@AriaLabel">
-        <ul class="nav nav-tabs" role="tablist">
-            @foreach (var tab in VisibleTabs)
-            {
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link @(tab.Id == ActiveTabId ? "active" : "")"
-                       href="@tab.Route"
-                       role="tab"
-                       aria-selected="@((tab.Id == ActiveTabId).ToString().ToLowerInvariant())"
-                       @onclick="() => OnTabClick(tab)"
-                       @onclick:preventDefault>
-                        @tab.Label
-                    </a>
-                </li>
-            }
-        </ul>
-    </nav>
+    <TabBar Tabs="Tabs" ActiveTabId="@ActiveTabId"
+            OnTabChanged="OnTabClick" AriaLabel="@AriaLabel" />
     <div class="tab-content" role="tabpanel">
         @ChildContent
     </div>
@@ -35,8 +20,6 @@
 
     [Parameter]
     public string AriaLabel { get; set; } = "Tabs";
-
-    private IEnumerable<TabItem> VisibleTabs => Tabs.Where(t => t.IsVisible);
 
     private void OnTabClick(TabItem tab)
     {

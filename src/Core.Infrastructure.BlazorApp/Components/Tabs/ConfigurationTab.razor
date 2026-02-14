@@ -13,7 +13,7 @@
     }
     else
     {
-        <div class="d-flex justify-content-end mb-3">
+        <div class="view-toggle">
             <div class="btn-group btn-group-sm">
                 <button type="button"
                         class="btn @(_showJson ? "btn-outline-secondary" : "btn-secondary")"
@@ -30,32 +30,31 @@
 
         @if (_showJson)
         {
-            <div class="position-relative">
-                <button class="btn btn-sm btn-outline-secondary position-absolute end-0 m-2"
-                        style="top: 0; z-index: 1;"
+            <div class="json-container">
+                <button class="btn btn-sm btn-outline-secondary copy-btn"
                         @onclick="CopyJsonToClipboard"
                         title="Copy to clipboard">
                     @(_copied ? "Copied!" : "Copy")
                 </button>
-                <pre class="bg-light border rounded p-3 mb-0"><code>@GetConfigurationJson()</code></pre>
+                <pre class="code-block"><code>@GetConfigurationJson()</code></pre>
             </div>
         }
         else
         {
-            <div class="mb-4">
-                <h6 class="text-muted mb-2">Command</h6>
-                <code class="d-block p-2 bg-light border rounded text-dark">@Configuration.Command</code>
+            <div class="config-section">
+                <h6 class="text-muted section-heading">Command</h6>
+                <code class="config-value">@Configuration.Command</code>
             </div>
 
             @if (Configuration.Args.Count > 0)
             {
-                <div class="mb-4">
-                    <h6 class="text-muted mb-2">Arguments</h6>
-                    <ul class="list-unstyled mb-0">
+                <div class="config-section">
+                    <h6 class="text-muted section-heading">Arguments</h6>
+                    <ul class="args-list">
                         @foreach (var arg in Configuration.Args)
                         {
-                            <li class="mb-1">
-                                <code class="p-1 bg-light border rounded text-secondary">@arg</code>
+                            <li class="arg-item">
+                                <code class="arg-value text-secondary">@arg</code>
                             </li>
                         }
                     </ul>
@@ -64,8 +63,8 @@
 
             @if (Configuration.Env.Count > 0)
             {
-                <div class="mb-4">
-                    <h6 class="text-muted mb-2">Environment Variables</h6>
+                <div class="config-section">
+                    <h6 class="text-muted section-heading">Environment Variables</h6>
                     <table class="table table-sm table-bordered">
                         <thead class="table-light">
                             <tr>
@@ -78,7 +77,7 @@
                             {
                                 <tr>
                                     <td><code class="text-secondary">@kvp.Key</code></td>
-                                    <td><code class="text-break text-secondary">@MaskSensitiveValue(kvp.Key, kvp.Value)</code></td>
+                                    <td><code class="env-value text-secondary">@MaskSensitiveValue(kvp.Key, kvp.Value)</code></td>
                                 </tr>
                             }
                         </tbody>

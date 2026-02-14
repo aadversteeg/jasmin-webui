@@ -1,0 +1,15 @@
+.params-table {
+    margin-bottom: 0;
+}
+
+.no-args-text {
+    margin-bottom: 0;
+}
+
+.errors-alert {
+    margin-top: var(--space-3);
+}
+
+.errors-list {
+    margin-bottom: 0;
+}

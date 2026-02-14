@@ -5,7 +5,7 @@
 .schema-input.nested {
     margin-left: 1rem;
     padding-left: 0.75rem;
-    border-left: 2px solid var(--bs-border-color);
+    border-left: 2px solid var(--color-border);
 }
 
 .array-input,
@@ -23,16 +23,39 @@
 }
 
 .array-item {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--color-surface-2);
+    margin-bottom: var(--space-2);
 }
 
 .array-item .card-header {
-    background-color: var(--bs-secondary-bg);
+    background-color: var(--color-surface-3);
     font-size: 0.85rem;
 }
 
 .array-item .card-body {
     padding: 0.5rem;
+}
+
+/* Card header row layout */
+.card-header-row {
+    display: flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-2);
+}
+
+/* Type annotation label */
+.type-annotation {
+    margin-left: var(--space-2);
+}
+
+/* Field description spacing */
+.field-description {
+    margin-bottom: var(--space-2);
+}
+
+/* Empty list message */
+.empty-list {
+    margin-bottom: var(--space-2);
 }
 
 .object-properties {
@@ -57,9 +80,12 @@
     font-size: 0.875rem;
 }
 
+/* Collapse toggle */
 .collapse-toggle {
     text-decoration: none;
     line-height: 1;
+    padding: 0;
+    margin-right: var(--space-2);
 }
 
 .collapse-toggle:hover {
@@ -78,16 +104,23 @@
 
 /* Object collapse styles */
 .object-header {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--color-surface-2);
+    margin-bottom: var(--space-2);
 }
 
 .object-header .card-header {
-    background-color: var(--bs-secondary-bg);
+    background-color: var(--color-surface-3);
     font-size: 0.85rem;
 }
 
 .object-header .card-body {
     padding: 0.5rem;
+}
+
+/* Object label */
+.object-label {
+    flex-shrink: 0;
+    margin-bottom: 0;
 }
 
 .collapsed-summary {
@@ -103,8 +136,7 @@
 }
 
 /* Label styles */
-.item-label,
-.object-label {
+.item-label {
     flex-shrink: 0;
 }
 
@@ -122,8 +154,16 @@
     text-align: right;
 }
 
+/* Delete button */
 .delete-btn {
     flex-shrink: 0;
+    padding: 0 var(--space-1);
+    margin-left: auto;
+}
+
+/* Add item button */
+.add-item-btn {
+    margin-top: var(--space-1);
 }
 
 /* Key-value input styles */
@@ -136,7 +176,16 @@
 }
 
 .key-value-item {
-    background-color: var(--bs-tertiary-bg);
+    background-color: var(--color-surface-2);
+    margin-bottom: var(--space-2);
+}
+
+/* Key-value row layout */
+.kv-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2);
 }
 
 .key-value-item .key-input {
@@ -152,6 +201,14 @@
 /* Primitive array styles */
 .primitive-array-items {
     margin-bottom: 0.5rem;
+}
+
+/* Primitive array item row */
+.primitive-array-item {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-bottom: var(--space-1);
 }
 
 .primitive-array-item input {

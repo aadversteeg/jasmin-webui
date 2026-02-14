@@ -13,13 +13,16 @@
 }
 
 .left-panel {
-    border-right: 1px solid #dee2e6;
+    border-right: 1px solid var(--color-border);
 }
 
 .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0.75rem 1rem;
-    border-bottom: 1px solid #dee2e6;
-    background-color: #f8f9fa;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-surface-2);
     flex-shrink: 0;
 }
 
@@ -32,7 +35,7 @@
 /* Resizer handle */
 .split-resizer {
     width: 6px;
-    background-color: #e9ecef;
+    background-color: var(--color-surface-3);
     cursor: ew-resize;
     flex-shrink: 0;
     transition: background-color 0.2s;
@@ -40,5 +43,5 @@
 
 .split-resizer:hover,
 .split-resizer:active {
-    background-color: #0d6efd;
+    background-color: var(--color-primary);
 }

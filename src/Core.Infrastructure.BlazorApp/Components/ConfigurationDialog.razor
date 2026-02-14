@@ -6,7 +6,7 @@
              MaxWidth="500"
              OnClose="() => ViewModel.CancelCommand.Execute(null)">
     <ChildContent>
-        <div class="mb-3">
+        <div class="form-group">
             <label for="serverUrl" class="form-label">Server URL</label>
             <div class="input-group">
                 <input type="text"
@@ -22,7 +22,7 @@
                         disabled="@(IsTesting || string.IsNullOrWhiteSpace(ViewModel.ServerUrl))">
                     @if (IsTesting)
                     {
-                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span class="spinner spinner-sm"></span>
                         <span>Testing...</span>
                     }
                     else
@@ -51,7 +51,7 @@
     </ChildContent>
     <FooterContent>
         <button type="button"
-                class="btn btn-outline-danger me-auto"
+                class="btn btn-outline-danger disconnect-btn"
                 @onclick="Disconnect"
                 disabled="@(!IsConnected)">
             Disconnect

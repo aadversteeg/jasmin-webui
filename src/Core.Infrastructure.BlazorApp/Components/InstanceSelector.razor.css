@@ -1,5 +1,6 @@
 .instance-selector {
-    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border);
     padding-bottom: 1rem;
 }
 
@@ -11,5 +12,5 @@
 
 .instance-selector .form-text {
     font-size: 0.75rem;
-    color: var(--bs-secondary);
+    color: var(--color-secondary);
 }

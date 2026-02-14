@@ -1,3 +1,7 @@
+.parameter-input {
+    margin-bottom: var(--space-3);
+}
+
 .parameter-input label {
     margin-bottom: 0.25rem;
 }
@@ -12,4 +16,12 @@
 
 .parameter-input textarea {
     font-size: 0.875rem;
+}
+
+.type-hint {
+    margin-left: var(--space-2);
+}
+
+.description-text {
+    margin-bottom: var(--space-1);
 }

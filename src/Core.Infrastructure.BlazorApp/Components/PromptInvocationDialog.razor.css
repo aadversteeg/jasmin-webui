@@ -1,43 +1,62 @@
-/* Output styles */
-.output-container {
-    height: 100%;
-    overflow-y: auto;
+/* Panel headers */
+.panel-title {
+    margin-bottom: 0;
 }
 
+/* Toolbar layout */
+.toolbar-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+}
+
+/* Spinner inside buttons needs trailing margin */
+.spinner {
+    margin-right: var(--space-1);
+}
+
+/* Parse error message */
+.parse-error {
+    margin-top: var(--space-1);
+}
+
+/* Description alert at top of output */
+.result-description {
+    margin-bottom: var(--space-3);
+}
+
+/* Prompt message styling */
 .prompt-message {
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     padding: 0.75rem;
-    background-color: #fff;
+    background-color: var(--color-surface-1);
+    margin-bottom: var(--space-3);
 }
 
 .message-role {
     text-transform: capitalize;
-    color: #6c757d;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
 }
 
-.output-text {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    margin-bottom: 0;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-size: 0.875rem;
+/* Loading spinner state */
+.loading-state {
+    padding: var(--space-4) 0;
 }
 
-.output-image img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 0.25rem;
+.loading-message {
+    margin-top: var(--space-2);
 }
 
-.output-resource {
-    padding: 0.5rem;
-    background-color: #e9ecef;
-    border-radius: 0.25rem;
+/* Footer layout */
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
 }
 
-.output-resource a {
-    word-break: break-all;
+.footer-nav {
+    display: flex;
+    gap: var(--space-2);
 }

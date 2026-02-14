@@ -1,15 +1,15 @@
 @using Core.Application.McpServers
 
 <article class="expandable-card @(IsExpanded ? "expanded" : "")" @onclick="HandleClick">
-    <div class="d-flex justify-content-between align-items-start">
+    <div class="card-header-row">
         <div>
             <code class="item-name">@Name</code>
             @if (!string.IsNullOrEmpty(Title) && Title != Name)
             {
-                <span class="text-muted ms-2">@Title</span>
+                <span class="text-muted item-title">@Title</span>
             }
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="card-header-actions">
             @HeaderActions
             <button type="button"
                     class="expand-icon btn-unstyled"
@@ -23,17 +23,17 @@
     </div>
     @if (!IsExpanded && !string.IsNullOrEmpty(Description))
     {
-        <div class="text-muted small mt-1 description-preview">
+        <div class="text-muted small description-preview">
             @TruncateDescription(Description)
         </div>
     }
 
     @if (IsExpanded)
     {
-        <div class="item-details mt-3" @onclick:stopPropagation="true">
+        <div class="item-details" @onclick:stopPropagation="true">
             @if (!string.IsNullOrEmpty(Description))
             {
-                <p class="mb-2 text-muted small">@Description</p>
+                <p class="text-muted small item-description">@Description</p>
             }
             @ChildContent
         </div>

@@ -1,8 +1,32 @@
+.header-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0 var(--space-3);
+}
+
+.header-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+.header-error {
+    margin-top: var(--space-2);
+    padding: 0 var(--space-3);
+}
+
+.header-error .alert {
+    margin-bottom: 0;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+}
+
 .events-area {
     flex-grow: 1;
     overflow-y: auto;
     padding: 1rem;
-    background-color: #f8f9fa;
+    background-color: var(--color-surface-2);
 }
 
 .connection-indicator {
@@ -14,25 +38,25 @@
 }
 
 .connection-indicator.connected {
-    background-color: #198754;
+    background-color: var(--color-success);
 }
 
 .connection-indicator.unconfigured {
-    background-color: #6c757d;
+    background-color: var(--color-secondary);
 }
 
 .connection-indicator.disconnected {
-    background-color: #dc3545;
+    background-color: var(--color-danger);
     animation: flash 1s infinite;
 }
 
 .connection-indicator.connecting {
-    background-color: #ffc107;
+    background-color: var(--color-warning);
     animation: pulse 1s infinite;
 }
 
 .connection-indicator.error {
-    background-color: #dc3545;
+    background-color: var(--color-danger);
 }
 
 @keyframes pulse {
@@ -45,16 +69,4 @@
     50% { opacity: 0.3; }
 }
 
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #6c757d;
-}
-
-.empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
+/* empty-state and empty-state-icon are defined in app.css */

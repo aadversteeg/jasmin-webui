@@ -12,29 +12,28 @@
             IsNavigation="true"
             AriaLabel="MCP Server navigation">
     <Header>
-        <h5 class="mb-0">MCP Servers</h5>
+        <h5 class="panel-title">MCP Servers</h5>
     </Header>
     <ChildContent>
         <div class="mcp-server-list">
-            <div class="server-toolbar d-flex gap-2 p-2">
-                <div class="position-relative flex-grow-1">
+            <div class="server-toolbar">
+                <div class="search-wrapper">
                     <input type="text"
-                           class="form-control form-control-sm pe-4"
+                           class="form-control form-control-sm search-input"
                            placeholder="Filter servers..."
                            @bind="_filterText"
                            @bind:event="oninput" />
                     @if (!string.IsNullOrEmpty(_filterText))
                     {
                         <button type="button"
-                                class="btn btn-sm position-absolute top-50 end-0 translate-middle-y border-0 p-0 pe-2"
-                                style="background: transparent; line-height: 1;"
+                                class="btn btn-sm clear-btn"
                                 @onclick="ClearFilter"
                                 title="Clear filter">
                             <span class="text-muted">&times;</span>
                         </button>
                     }
                 </div>
-                <button class="btn btn-sm btn-outline-primary flex-shrink-0"
+                <button class="btn btn-sm btn-outline-primary add-btn"
                         @onclick="HandleAddServer"
                         title="Add MCP Server">
                     + Add
@@ -42,7 +41,7 @@
             </div>
             @if (!FilteredServers.Any())
             {
-                <div class="empty-state text-muted text-center py-3">
+                <div class="empty-state text-muted">
                     @if (string.IsNullOrWhiteSpace(_filterText))
                     {
                         <span>No MCP servers</span>

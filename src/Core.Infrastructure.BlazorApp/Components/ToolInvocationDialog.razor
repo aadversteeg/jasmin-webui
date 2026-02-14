@@ -17,8 +17,8 @@
                     OnKeyDown="HandleKeyDown"
                     OnWidthChanged="HandleWidthChanged">
             <LeftHeader>
-                <h6 class="mb-0">Input</h6>
-                <div class="d-flex gap-2 align-items-center">
+                <h6 class="panel-title">Input</h6>
+                <div class="toolbar-row">
                     @* History navigation *@
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary"
@@ -66,12 +66,12 @@
                             disabled="@(!CanInvoke())">
                         @if (ViewModel.IsStartingInstance)
                         {
-                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span class="spinner spinner-sm" role="status"></span>
                             <span>Starting...</span>
                         }
                         else if (ViewModel.IsInvoking)
                         {
-                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span class="spinner spinner-sm" role="status"></span>
                             <span>Invoking...</span>
                         }
                         else
@@ -105,7 +105,7 @@
                                   placeholder="Enter JSON input..."></textarea>
                         @if (!string.IsNullOrEmpty(_jsonParseError))
                         {
-                            <div class="text-danger small mt-1">@_jsonParseError</div>
+                            <div class="text-danger small parse-error">@_jsonParseError</div>
                         }
                     }
                     else
@@ -126,7 +126,7 @@
                 }
             </LeftContent>
             <RightHeader>
-                <h6 class="mb-0">Output</h6>
+                <h6 class="panel-title">Output</h6>
                 @{
                     var invokedAt = ViewModel.HistoricalInvokedAt ?? ViewModel.LastInvokedAt;
                 }
@@ -146,7 +146,7 @@
                 {
                     @if (ViewModel.Result.IsError)
                     {
-                        <div class="alert alert-warning mb-3">
+                        <div class="alert alert-warning result-warning">
                             The tool returned an error response.
                         </div>
                     }
@@ -174,19 +174,16 @@
 
                         @if (ViewModel.Result.StructuredContent.HasValue)
                         {
-                            <details class="mt-3">
+                            <details class="structured-details">
                                 <summary class="text-muted small">Structured Content</summary>
-                                <pre class="output-json mt-2">@FormatJson(ViewModel.Result.StructuredContent.Value)</pre>
+                                <pre class="output-json structured-content">@FormatJson(ViewModel.Result.StructuredContent.Value)</pre>
                             </details>
                         }
                     </div>
                 }
                 else if (ViewModel.IsInvoking)
                 {
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-secondary" role="status"></div>
-                        <p class="mt-2 text-muted">Invoking tool...</p>
-                    </div>
+                    <LoadingState Label="Invoking tool..." />
                 }
                 else
                 {
@@ -197,8 +194,8 @@
     </ChildContent>
 
     <FooterContent>
-        <div class="d-flex justify-content-between w-100">
-            <div class="d-flex gap-2">
+        <div class="footer-row">
+            <div class="footer-nav">
                 <button class="btn btn-outline-secondary"
                         disabled="@(!ViewModel.CanGoPreviousTool)"
                         @onclick="HandlePreviousTool"
