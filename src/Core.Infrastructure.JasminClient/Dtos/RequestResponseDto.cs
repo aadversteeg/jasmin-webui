@@ -8,7 +8,7 @@ namespace Core.Infrastructure.JasminClient.Dtos;
 public record RequestResponseDto(
     string Id,
     string Action,
-    string Target,
+    string? Target,
     string Status,
     string CreatedAt,
     string? CompletedAt,

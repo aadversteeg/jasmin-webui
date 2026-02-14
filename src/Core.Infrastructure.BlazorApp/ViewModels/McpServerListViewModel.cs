@@ -150,7 +150,7 @@ public partial class McpServerListViewModel : ViewModelBase
                     // Failed to start instance - the server list will update via SSE
                     return;
                 }
-                instanceId = startResult.Value!;
+                instanceId = startResult.InstanceId!;
                 startedTemporaryInstance = true;
             }
 

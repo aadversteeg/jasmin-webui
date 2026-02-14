@@ -56,6 +56,7 @@ public class InstanceManagementViewModelTests
 
         _sut = new InstanceManagementViewModel(
             _invocationServiceMock.Object,
+            new Mock<IMcpServerDetailService>().Object,
             _appStateMock.Object,
             _eventStreamMock.Object,
             _logServiceMock.Object,
@@ -291,7 +292,7 @@ public class InstanceManagementViewModelTests
         await _sut.OpenCommand.ExecuteAsync("my-server");
         _invocationServiceMock
             .Setup(x => x.StartInstanceAsync("http://localhost:5000", "my-server", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ToolInvocationServiceResult<string>.Success("inst-new"));
+            .ReturnsAsync(new StartInstanceResult("inst-new", Array.Empty<string>(), null));
 
         // Act
         await _sut.StartNewInstanceCommand.ExecuteAsync(null);

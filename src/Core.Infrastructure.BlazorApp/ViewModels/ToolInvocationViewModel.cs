@@ -325,11 +325,11 @@ public partial class ToolInvocationViewModel : ViewModelBase
 
             if (result.IsSuccess)
             {
-                InstanceId = result.Value;
+                InstanceId = result.InstanceId;
             }
             else
             {
-                ErrorMessage = result.Error;
+                ErrorMessage = result.ErrorMessage;
             }
         }
         catch (OperationCanceledException)

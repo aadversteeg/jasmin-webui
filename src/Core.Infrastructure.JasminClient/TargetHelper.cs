@@ -20,8 +20,13 @@ public static class TargetHelper
     /// <summary>
     /// Parses a target URI to extract the server name and optional instance ID.
     /// </summary>
-    public static (string? ServerName, string? InstanceId) ParseTarget(string target)
+    public static (string? ServerName, string? InstanceId) ParseTarget(string? target)
     {
+        if (string.IsNullOrEmpty(target))
+        {
+            return (null, null);
+        }
+
         var segments = target.Split('/');
         string? serverName = segments.Length >= 2 ? segments[1] : null;
         string? instanceId = segments.Length >= 4 ? segments[3] : null;

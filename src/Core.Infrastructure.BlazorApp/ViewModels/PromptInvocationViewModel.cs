@@ -297,11 +297,11 @@ public partial class PromptInvocationViewModel : ViewModelBase
 
             if (result.IsSuccess)
             {
-                InstanceId = result.Value;
+                InstanceId = result.InstanceId;
             }
             else
             {
-                ErrorMessage = result.Error;
+                ErrorMessage = result.ErrorMessage;
             }
         }
         catch (OperationCanceledException)

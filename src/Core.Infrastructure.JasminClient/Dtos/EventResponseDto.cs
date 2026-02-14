@@ -7,7 +7,7 @@ namespace Core.Infrastructure.JasminClient.Dtos;
 /// </summary>
 public record EventResponseDto(
     string EventType,
-    string Target,
+    string? Target,
     string Timestamp,
     JsonElement? Payload,
     string? RequestId);

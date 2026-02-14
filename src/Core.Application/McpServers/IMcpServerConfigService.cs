@@ -53,21 +53,6 @@ public interface IMcpServerConfigService
         string name,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Tests an MCP server configuration without persisting it.
-    /// </summary>
-    /// <param name="serverUrl">The base URL of the jasmin-server.</param>
-    /// <param name="command">The command to execute.</param>
-    /// <param name="args">The command arguments.</param>
-    /// <param name="env">The environment variables.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Success or an error message on failure.</returns>
-    Task<McpServerConfigServiceResult> TestConfigurationAsync(
-        string serverUrl,
-        string command,
-        IReadOnlyList<string>? args,
-        IReadOnlyDictionary<string, string>? env,
-        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

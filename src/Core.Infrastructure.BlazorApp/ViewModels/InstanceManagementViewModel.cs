@@ -17,6 +17,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
     private const int MaxEvents = 1000;
 
     private readonly IToolInvocationService _invocationService;
+    private readonly IMcpServerDetailService _detailService;
     private readonly IApplicationStateService _appState;
     private readonly IEventStreamService _eventStream;
     private readonly IInstanceLogService _logService;
@@ -40,6 +41,9 @@ public partial class InstanceManagementViewModel : ViewModelBase
 
     [ObservableProperty]
     private string? _stoppingInstanceId;
+
+    [ObservableProperty]
+    private IReadOnlyList<string> _startErrorStderrLines = Array.Empty<string>();
 
     [ObservableProperty]
     private string? _selectedInstanceId;
@@ -90,12 +94,14 @@ public partial class InstanceManagementViewModel : ViewModelBase
 
     public InstanceManagementViewModel(
         IToolInvocationService invocationService,
+        IMcpServerDetailService detailService,
         IApplicationStateService appState,
         IEventStreamService eventStream,
         IInstanceLogService logService,
         EventViewerViewModel eventViewer)
     {
         _invocationService = invocationService;
+        _detailService = detailService;
         _appState = appState;
         _eventStream = eventStream;
         _logService = logService;
@@ -110,6 +116,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
     {
         ServerName = serverName;
         ErrorMessage = null;
+        StartErrorStderrLines = Array.Empty<string>();
         SelectedInstanceId = null;
         LogEntries.Clear();
         Instances.Clear();
@@ -188,6 +195,7 @@ public partial class InstanceManagementViewModel : ViewModelBase
 
         IsStartingInstance = true;
         ErrorMessage = null;
+        StartErrorStderrLines = Array.Empty<string>();
 
         try
         {
@@ -199,7 +207,20 @@ public partial class InstanceManagementViewModel : ViewModelBase
             }
             else
             {
-                ErrorMessage = result.Error;
+                ErrorMessage = result.ErrorMessage;
+                StartErrorStderrLines = result.StderrLines;
+
+                // If start failed without stderr, use test-configuration to get stderr
+                if (StartErrorStderrLines.Count == 0)
+                {
+                    var config = await _detailService.GetConfigurationAsync(serverUrl, ServerName);
+                    if (config != null)
+                    {
+                        var testResult = await _invocationService.TestConfigurationAsync(
+                            serverUrl, config.Command, config.Args, config.Env);
+                        StartErrorStderrLines = testResult.StderrLines;
+                    }
+                }
             }
         }
         catch (Exception ex)

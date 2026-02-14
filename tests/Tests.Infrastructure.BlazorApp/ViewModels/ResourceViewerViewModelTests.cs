@@ -429,7 +429,7 @@ public class ResourceViewerViewModelTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ToolInvocationServiceResult<string>.Success(instanceId));
+            .ReturnsAsync(new StartInstanceResult(instanceId, Array.Empty<string>(), null));
     }
 
     private void SetupStartInstanceFailure(string error)
@@ -439,7 +439,7 @@ public class ResourceViewerViewModelTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ToolInvocationServiceResult<string>.Failure(error));
+            .ReturnsAsync(new StartInstanceResult(null, Array.Empty<string>(), error));
     }
 
     private void SetupReadResourceSuccess(McpResourceReadResult? result = null)

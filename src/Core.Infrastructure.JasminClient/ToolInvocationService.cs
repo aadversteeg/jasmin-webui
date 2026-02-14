@@ -24,7 +24,7 @@ public class ToolInvocationService : IToolInvocationService
     }
 
     /// <inheritdoc />
-    public async Task<ToolInvocationServiceResult<string>> StartInstanceAsync(
+    public async Task<StartInstanceResult> StartInstanceAsync(
         string serverUrl,
         string serverName,
         CancellationToken cancellationToken = default)
@@ -33,17 +33,26 @@ public class ToolInvocationService : IToolInvocationService
         {
             var target = TargetHelper.BuildServerTarget(serverName);
             var request = new CreateRequestDto("mcp-server.start", target);
-            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken, returnResponseOnFailure: true);
 
             if (!result.IsSuccess)
             {
-                return ToolInvocationServiceResult<string>.Failure(result.Error!);
+                // POST itself failed (HTTP error), no response available
+                return new StartInstanceResult(null, Array.Empty<string>(), result.Error!);
             }
 
             var response = result.Value!;
+            var stderrLines = ExtractStderrLines(response);
+
+            if (response.Status == "failed")
+            {
+                var errorMessage = response.Errors?.FirstOrDefault()?.Message ?? "Failed to start instance";
+                return new StartInstanceResult(null, stderrLines, errorMessage);
+            }
+
             if (!response.Output.HasValue)
             {
-                return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
+                return new StartInstanceResult(null, stderrLines, "No instance ID returned");
             }
 
             var output = response.Output.Value;
@@ -52,16 +61,16 @@ public class ToolInvocationService : IToolInvocationService
                 var instanceId = instanceIdElement.GetString();
                 if (!string.IsNullOrEmpty(instanceId))
                 {
-                    return ToolInvocationServiceResult<string>.Success(instanceId);
+                    return new StartInstanceResult(instanceId, stderrLines, null);
                 }
             }
 
-            return ToolInvocationServiceResult<string>.Failure("No instance ID returned");
+            return new StartInstanceResult(null, stderrLines, "No instance ID returned");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start instance for server {ServerName}", serverName);
-            return ToolInvocationServiceResult<string>.Failure(ex.Message);
+            return new StartInstanceResult(null, Array.Empty<string>(), ex.Message);
         }
     }
 
@@ -216,10 +225,85 @@ public class ToolInvocationService : IToolInvocationService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<TestConfigurationResult> TestConfigurationAsync(
+        string serverUrl,
+        string command,
+        IReadOnlyList<string>? args,
+        IReadOnlyDictionary<string, string>? env,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var parameters = new Dictionary<string, object?> { ["command"] = command };
+            if (args is { Count: > 0 })
+            {
+                parameters["args"] = args;
+            }
+            if (env is { Count: > 0 })
+            {
+                parameters["env"] = env;
+            }
+            var parametersJson = JsonSerializer.SerializeToElement(parameters);
+
+            var request = new CreateRequestDto("mcp-server.test-configuration", null, parametersJson);
+            var result = await ExecuteRequestAsync(serverUrl, request, cancellationToken, returnResponseOnFailure: true);
+
+            if (!result.IsSuccess)
+            {
+                // POST itself failed (HTTP error), no response available
+                return new TestConfigurationResult(Array.Empty<string>(), result.Error!);
+            }
+
+            var response = result.Value!;
+            var stderrLines = ExtractStderrLines(response);
+
+            if (response.Status == "failed")
+            {
+                var errorMessage = response.Errors?.FirstOrDefault()?.Message ?? "Request failed";
+                return new TestConfigurationResult(stderrLines, errorMessage);
+            }
+
+            return new TestConfigurationResult(stderrLines, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to test configuration");
+            return new TestConfigurationResult(Array.Empty<string>(), ex.Message);
+        }
+    }
+
+    private static IReadOnlyList<string> ExtractStderrLines(RequestResponseDto response)
+    {
+        if (!response.Output.HasValue)
+        {
+            return Array.Empty<string>();
+        }
+
+        if (!response.Output.Value.TryGetProperty("stderr", out var stderr))
+        {
+            return Array.Empty<string>();
+        }
+
+        if (stderr.ValueKind != JsonValueKind.Array)
+        {
+            return Array.Empty<string>();
+        }
+
+        return stderr.EnumerateArray()
+            .Select(e => e.GetString() ?? "")
+            .ToList();
+    }
+
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> ExecuteRequestAsync(
         string serverUrl,
         CreateRequestDto request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool returnResponseOnFailure = false)
     {
         var url = BuildUrl(serverUrl, "/v1/requests");
 
@@ -238,13 +322,14 @@ public class ToolInvocationService : IToolInvocationService
             return ToolInvocationServiceResult<RequestResponseDto>.Failure("Invalid response from server");
         }
 
-        return await PollForCompletionAsync(serverUrl, requestResponse.Id, cancellationToken);
+        return await PollForCompletionAsync(serverUrl, requestResponse.Id, cancellationToken, returnResponseOnFailure);
     }
 
     private async Task<ToolInvocationServiceResult<RequestResponseDto>> PollForCompletionAsync(
         string serverUrl,
         string requestId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool returnResponseOnFailure = false)
     {
         var url = BuildUrl(serverUrl, $"/v1/requests/{Uri.EscapeDataString(requestId)}");
         var startTime = DateTime.UtcNow;
@@ -270,6 +355,8 @@ public class ToolInvocationService : IToolInvocationService
                     return ToolInvocationServiceResult<RequestResponseDto>.Success(response);
 
                 case "failed":
+                    if (returnResponseOnFailure)
+                        return ToolInvocationServiceResult<RequestResponseDto>.Success(response);
                     var errorMessage = response.Errors?.FirstOrDefault()?.Message ?? "Request failed";
                     return ToolInvocationServiceResult<RequestResponseDto>.Failure(errorMessage);
 

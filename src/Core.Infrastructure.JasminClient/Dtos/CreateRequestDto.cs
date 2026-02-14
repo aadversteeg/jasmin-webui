@@ -8,5 +8,5 @@ namespace Core.Infrastructure.JasminClient.Dtos;
 /// </summary>
 public record CreateRequestDto(
     string Action,
-    string Target,
+    string? Target,
     JsonElement? Parameters = null);

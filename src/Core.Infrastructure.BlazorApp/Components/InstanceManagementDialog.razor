@@ -40,7 +40,9 @@
             <LeftContent>
                 @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
                 {
-                    <div class="alert alert-danger mb-2">@ViewModel.ErrorMessage</div>
+                    <div class="alert alert-danger mb-2">
+                        <div>@ViewModel.ErrorMessage</div>
+                    </div>
                 }
 
                 @if (ViewModel.IsLoading)
@@ -125,10 +127,21 @@
                 </div>
             </RightHeader>
             <RightContent>
-                @if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId))
+                @if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId) && ViewModel.StartErrorStderrLines.Count == 0)
                 {
                     <div class="text-center py-4">
                         <p class="text-muted">Select an instance to view its logs and events.</p>
+                    </div>
+                }
+                else if (string.IsNullOrEmpty(ViewModel.SelectedInstanceId) && ViewModel.StartErrorStderrLines.Count > 0)
+                {
+                    <div class="log-entries">
+                        @foreach (var line in ViewModel.StartErrorStderrLines)
+                        {
+                            <div class="log-line">
+                                <span class="log-text">@line</span>
+                            </div>
+                        }
                     </div>
                 }
                 else if (_activeTab == LogsTab)

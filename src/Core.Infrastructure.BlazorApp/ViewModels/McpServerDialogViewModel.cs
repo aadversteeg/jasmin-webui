@@ -62,6 +62,12 @@ public partial class McpServerDialogViewModel : ViewModelBase
     [ObservableProperty]
     private string? _jsonParseError;
 
+    [ObservableProperty]
+    private IReadOnlyList<string> _stderrLines = Array.Empty<string>();
+
+    [ObservableProperty]
+    private bool _showStderrPanel;
+
     private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
@@ -174,6 +180,8 @@ public partial class McpServerDialogViewModel : ViewModelBase
 
         TestState = ConnectionTestState.Testing;
         TestErrorMessage = null;
+        ShowStderrPanel = true;
+        StderrLines = Array.Empty<string>();
         _cancellationTokenSource = new CancellationTokenSource();
 
         try
@@ -183,18 +191,19 @@ public partial class McpServerDialogViewModel : ViewModelBase
                 .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Key))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            // Test configuration without persisting anything
-            var testResult = await _configService.TestConfigurationAsync(
+            var testResult = await _invocationService.TestConfigurationAsync(
                 serverUrl,
                 Command,
                 args,
                 env,
                 _cancellationTokenSource.Token);
 
+            StderrLines = testResult.StderrLines;
+
             if (!testResult.IsSuccess)
             {
                 TestState = ConnectionTestState.Failed;
-                TestErrorMessage = testResult.Error;
+                TestErrorMessage = testResult.ErrorMessage;
                 return;
             }
 
@@ -204,6 +213,7 @@ public partial class McpServerDialogViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             TestState = ConnectionTestState.None;
+            ShowStderrPanel = false;
         }
         catch (Exception ex)
         {
@@ -294,7 +304,7 @@ public partial class McpServerDialogViewModel : ViewModelBase
                 return;
             }
 
-            var instanceId = startResult.Value!;
+            var instanceId = startResult.InstanceId!;
 
             // Refresh metadata
             await _invocationService.RefreshMetadataAsync(serverUrl, serverName, instanceId);
@@ -341,6 +351,12 @@ public partial class McpServerDialogViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Collapses the stderr output panel.
+    /// </summary>
+    [RelayCommand]
+    private void CollapseStderrPanel() => ShowStderrPanel = false;
+
+    /// <summary>
     /// Cancels and closes the dialog.
     /// </summary>
     [RelayCommand]
@@ -364,6 +380,8 @@ public partial class McpServerDialogViewModel : ViewModelBase
         IsJsonMode = false;
         JsonInputValue = "{}";
         JsonParseError = null;
+        StderrLines = Array.Empty<string>();
+        ShowStderrPanel = false;
     }
 
     /// <summary>

@@ -208,12 +208,12 @@ public partial class ResourceViewerViewModel : ViewModelBase
 
             if (!startResult.IsSuccess)
             {
-                ErrorMessage = startResult.Error;
+                ErrorMessage = startResult.ErrorMessage;
                 IsStartingInstance = false;
                 return;
             }
 
-            InstanceId = startResult.Value;
+            InstanceId = startResult.InstanceId;
             IsStartingInstance = false;
 
             // Automatically load the resource

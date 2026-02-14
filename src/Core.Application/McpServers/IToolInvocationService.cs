@@ -11,8 +11,8 @@ public interface IToolInvocationService
     /// <param name="serverUrl">The base URL of the jasmin-server.</param>
     /// <param name="serverName">The name of the MCP server.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The instance ID on success, or an error message on failure.</returns>
-    Task<ToolInvocationServiceResult<string>> StartInstanceAsync(
+    /// <returns>The instance ID on success, stderr lines and error message on failure.</returns>
+    Task<StartInstanceResult> StartInstanceAsync(
         string serverUrl,
         string serverName,
         CancellationToken cancellationToken = default);
@@ -74,6 +74,22 @@ public interface IToolInvocationService
         string serverName,
         string instanceId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Tests an MCP server configuration without persisting it.
+    /// </summary>
+    /// <param name="serverUrl">The base URL of the jasmin-server.</param>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="args">The command arguments.</param>
+    /// <param name="env">The environment variables.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A result containing stderr lines (always) and an error message (on failure).</returns>
+    Task<TestConfigurationResult> TestConfigurationAsync(
+        string serverUrl,
+        string command,
+        IReadOnlyList<string>? args,
+        IReadOnlyDictionary<string, string>? env,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -109,4 +125,26 @@ public class ToolInvocationServiceResult<T> : ToolInvocationServiceResult
 
     public static ToolInvocationServiceResult<T> Success(T value) => new(true, value, null);
     public new static ToolInvocationServiceResult<T> Failure(string error) => new(false, default, error);
+}
+
+/// <summary>
+/// Result of a test-configuration operation. Always carries stderr lines (even on failure).
+/// </summary>
+public record TestConfigurationResult(
+    IReadOnlyList<string> StderrLines,
+    string? ErrorMessage)
+{
+    public bool IsSuccess => ErrorMessage == null;
+}
+
+/// <summary>
+/// Result of a start-instance operation. Carries the instance ID on success,
+/// or stderr lines and an error message on failure.
+/// </summary>
+public record StartInstanceResult(
+    string? InstanceId,
+    IReadOnlyList<string> StderrLines,
+    string? ErrorMessage)
+{
+    public bool IsSuccess => ErrorMessage == null;
 }

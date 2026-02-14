@@ -35,3 +35,55 @@ textarea.form-control {
     font-family: monospace;
     font-size: 0.875rem;
 }
+
+.dialog-layout {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.dialog-layout.expanded {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    overflow-y: hidden;
+}
+
+.dialog-layout.expanded .form-panel {
+    width: 568px;
+    min-width: 568px;
+    overflow-y: auto;
+    padding-right: 1rem;
+    border-right: 1px solid #dee2e6;
+}
+
+.stderr-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding-left: 1rem;
+}
+
+.stderr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0.5rem;
+}
+
+.stderr-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.stderr-content .output-text {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}

@@ -58,4 +58,15 @@ public class TargetHelperTests
         serverName.Should().BeNull();
         instanceId.Should().BeNull();
     }
+
+    [Fact(DisplayName = "TH-006: ParseTarget with null should return nulls")]
+    public void TH006()
+    {
+        // Act
+        var (serverName, instanceId) = TargetHelper.ParseTarget(null);
+
+        // Assert
+        serverName.Should().BeNull();
+        instanceId.Should().BeNull();
+    }
 }

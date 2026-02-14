@@ -11,8 +11,8 @@ public interface IPromptInvocationService
     /// <param name="serverUrl">The base URL of the jasmin-server.</param>
     /// <param name="serverName">The name of the MCP server.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The instance ID on success, or an error message on failure.</returns>
-    Task<ToolInvocationServiceResult<string>> StartInstanceAsync(
+    /// <returns>The instance ID on success, stderr lines and error message on failure.</returns>
+    Task<StartInstanceResult> StartInstanceAsync(
         string serverUrl,
         string serverName,
         CancellationToken cancellationToken = default);

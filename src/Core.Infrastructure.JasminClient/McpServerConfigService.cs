@@ -145,55 +145,6 @@ public class McpServerConfigService : IMcpServerConfigService
         }
     }
 
-    /// <inheritdoc />
-    public async Task<McpServerConfigServiceResult> TestConfigurationAsync(
-        string serverUrl,
-        string command,
-        IReadOnlyList<string>? args,
-        IReadOnlyDictionary<string, string>? env,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var url = BuildUrl(serverUrl, "/v1/mcp-servers/test-configuration");
-            var request = new McpServerConfigurationRequestDto(
-                command,
-                args?.ToList(),
-                env?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
-
-            var response = await _httpClient.PostAsJsonAsync(url, request, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return McpServerConfigServiceResult.Success();
-            }
-
-            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Test configuration failed with status {Status}: {Content}", response.StatusCode, errorContent);
-
-            // Try to extract error message from response
-            try
-            {
-                var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponseDto>(cancellationToken);
-                if (errorResponse?.Errors?.Count > 0)
-                {
-                    return McpServerConfigServiceResult.Failure(errorResponse.Errors[0].Message);
-                }
-            }
-            catch
-            {
-                // Ignore JSON parsing errors
-            }
-
-            return McpServerConfigServiceResult.Failure($"Configuration test failed: {response.StatusCode}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to test configuration");
-            return McpServerConfigServiceResult.Failure(ex.Message);
-        }
-    }
-
     private static string BuildUrl(string serverUrl, string path)
     {
         return serverUrl.TrimEnd('/') + path;

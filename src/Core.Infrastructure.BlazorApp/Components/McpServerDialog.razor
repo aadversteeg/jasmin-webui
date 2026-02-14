@@ -5,144 +5,179 @@
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@ViewModel.DialogTitle"
              MaxWidth="600"
+             Width="@(ViewModel.ShowStderrPanel ? "90vw" : null)"
+             Height="90vh"
              OnClose="() => ViewModel.CancelCommand.ExecuteAsync(null)">
     <ChildContent>
-        @if (ViewModel.IsLoading)
-        {
-            <div class="d-flex justify-content-center py-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="d-flex justify-content-end mb-3">
-                <button class="btn btn-outline-secondary btn-sm"
-                        @onclick="ToggleInputMode"
-                        disabled="@IsTesting"
-                        title="@(ViewModel.IsJsonMode ? "Switch to Form view" : "Switch to JSON view")">
-                    @(ViewModel.IsJsonMode ? "Form" : "JSON")
-                </button>
-            </div>
+        <div class="dialog-layout @(ViewModel.ShowStderrPanel ? "expanded" : "")">
+            <div class="form-panel">
+                @if (ViewModel.IsLoading)
+                {
+                    <div class="d-flex justify-content-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-outline-secondary btn-sm"
+                                @onclick="ToggleInputMode"
+                                disabled="@IsTesting"
+                                title="@(ViewModel.IsJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                            @(ViewModel.IsJsonMode ? "Form" : "JSON")
+                        </button>
+                    </div>
 
-            @if (ViewModel.IsJsonMode)
-            {
-                <div class="mb-3">
-                    <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
-                    <input type="text"
-                           class="form-control"
-                           id="serverName"
-                           placeholder="my-server"
-                           @bind="ViewModel.ServerName"
-                           @bind:event="oninput"
-                           disabled="@(ViewModel.IsEditMode || IsTesting)" />
+                    @if (ViewModel.IsJsonMode)
+                    {
+                        <div class="mb-3">
+                            <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="serverName"
+                                   placeholder="my-server"
+                                   @bind="ViewModel.ServerName"
+                                   @bind:event="oninput"
+                                   disabled="@(ViewModel.IsEditMode || IsTesting)" />
+                            @if (!ViewModel.IsEditMode)
+                            {
+                                <div class="form-text">A unique identifier for this server (no spaces)</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Configuration (JSON)</label>
+                            <textarea class="form-control font-monospace"
+                                      rows="15"
+                                      value="@ViewModel.JsonInputValue"
+                                      @oninput="OnJsonInputChanged"
+                                      disabled="@IsTesting"
+                                      placeholder='{"command": "npx", "args": [], "env": {}}'></textarea>
+                            @if (!string.IsNullOrEmpty(ViewModel.JsonParseError))
+                            {
+                                <div class="text-danger small mt-1">@ViewModel.JsonParseError</div>
+                            }
+                            <div class="form-text">JSON with command, args (array), and env (object)</div>
+                        </div>
+                    }
+                    else
+                    {
+                    <div class="mb-3">
+                        <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
+                        <input type="text"
+                               class="form-control"
+                               id="serverName"
+                               placeholder="my-server"
+                               @bind="ViewModel.ServerName"
+                               @bind:event="oninput"
+                               disabled="@(ViewModel.IsEditMode || IsTesting)" />
+                        @if (!ViewModel.IsEditMode)
+                        {
+                            <div class="form-text">A unique identifier for this server (no spaces)</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
+                        <input type="text"
+                               class="form-control"
+                               id="command"
+                               placeholder="npx"
+                               @bind="ViewModel.Command"
+                               @bind:event="oninput"
+                               disabled="@IsTesting" />
+                        <div class="form-text">The executable command (e.g., npx, docker, dotnet)</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <SchemaBasedInput Parameter="@ArgumentsParameter"
+                                          Value="@GetArgumentsValue()"
+                                          OnValueChanged="OnArgumentsChanged" />
+                    </div>
+
+                    <div class="mb-3">
+                        <SchemaBasedInput Parameter="@EnvironmentVariablesParameter"
+                                          Value="@GetEnvironmentVariablesValue()"
+                                          OnValueChanged="OnEnvironmentVariablesChanged" />
+                    </div>
+                    }
+
                     @if (!ViewModel.IsEditMode)
                     {
-                        <div class="form-text">A unique identifier for this server (no spaces)</div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="autoRefreshMetadata"
+                                   @bind="ViewModel.AutoRefreshMetadataOnAdd"
+                                   disabled="@IsTesting" />
+                            <label class="form-check-label" for="autoRefreshMetadata">
+                                Refresh metadata after adding
+                            </label>
+                            <div class="form-text">Automatically fetch tools, prompts, and resources</div>
+                        </div>
                     }
-                </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Configuration (JSON)</label>
-                    <textarea class="form-control font-monospace"
-                              rows="15"
-                              value="@ViewModel.JsonInputValue"
-                              @oninput="OnJsonInputChanged"
-                              disabled="@IsTesting"
-                              placeholder='{"command": "npx", "args": [], "env": {}}'></textarea>
-                    @if (!string.IsNullOrEmpty(ViewModel.JsonParseError))
+                    @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
                     {
-                        <div class="text-danger small mt-1">@ViewModel.JsonParseError</div>
+                        <div class="alert alert-danger py-2 mb-3">
+                            @ViewModel.ValidationError
+                        </div>
                     }
-                    <div class="form-text">JSON with command, args (array), and env (object)</div>
-                </div>
-            }
-            else
-            {
-            <div class="mb-3">
-                <label for="serverName" class="form-label">Server Name <span class="text-danger">*</span></label>
-                <input type="text"
-                       class="form-control"
-                       id="serverName"
-                       placeholder="my-server"
-                       @bind="ViewModel.ServerName"
-                       @bind:event="oninput"
-                       disabled="@(ViewModel.IsEditMode || IsTesting)" />
-                @if (!ViewModel.IsEditMode)
-                {
-                    <div class="form-text">A unique identifier for this server (no spaces)</div>
+
+                    @if (ViewModel.TestState != ConnectionTestState.None)
+                    {
+                        <div class="test-result @GetTestResultClass()">
+                            @if (ViewModel.TestState == ConnectionTestState.Testing)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                                <span>Testing configuration...</span>
+                            }
+                            else if (ViewModel.TestState == ConnectionTestState.Success)
+                            {
+                                <span class="test-icon">&#10003;</span>
+                                <span>Configuration test passed</span>
+                            }
+                            else if (ViewModel.TestState == ConnectionTestState.Failed)
+                            {
+                                <span class="test-icon">&#10007;</span>
+                                <span>@(ViewModel.TestErrorMessage ?? "Configuration test failed")</span>
+                            }
+                        </div>
+                    }
                 }
             </div>
 
-            <div class="mb-3">
-                <label for="command" class="form-label">Command <span class="text-danger">*</span></label>
-                <input type="text"
-                       class="form-control"
-                       id="command"
-                       placeholder="npx"
-                       @bind="ViewModel.Command"
-                       @bind:event="oninput"
-                       disabled="@IsTesting" />
-                <div class="form-text">The executable command (e.g., npx, docker, dotnet)</div>
-            </div>
-
-            <div class="mb-3">
-                <SchemaBasedInput Parameter="@ArgumentsParameter"
-                                  Value="@GetArgumentsValue()"
-                                  OnValueChanged="OnArgumentsChanged" />
-            </div>
-
-            <div class="mb-3">
-                <SchemaBasedInput Parameter="@EnvironmentVariablesParameter"
-                                  Value="@GetEnvironmentVariablesValue()"
-                                  OnValueChanged="OnEnvironmentVariablesChanged" />
-            </div>
-            }
-
-            @if (!ViewModel.IsEditMode)
+            @if (ViewModel.ShowStderrPanel)
             {
-                <div class="form-check mb-3">
-                    <input type="checkbox"
-                           class="form-check-input"
-                           id="autoRefreshMetadata"
-                           @bind="ViewModel.AutoRefreshMetadataOnAdd"
-                           disabled="@IsTesting" />
-                    <label class="form-check-label" for="autoRefreshMetadata">
-                        Refresh metadata after adding
-                    </label>
-                    <div class="form-text">Automatically fetch tools, prompts, and resources</div>
+                <div class="stderr-panel">
+                    <div class="stderr-header">
+                        <h6 class="mb-0">Stderr Output</h6>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @onclick="() => ViewModel.CollapseStderrPanelCommand.Execute(null)"
+                                title="Hide panel">&#10005;</button>
+                    </div>
+                    <div class="stderr-content">
+                        @if (ViewModel.TestState == ConnectionTestState.Testing)
+                        {
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-secondary" role="status"></div>
+                                <p class="mt-2 text-muted">Testing configuration...</p>
+                            </div>
+                        }
+                        else if (ViewModel.StderrLines.Count > 0)
+                        {
+                            <pre class="output-text">@string.Join("\n", ViewModel.StderrLines)</pre>
+                        }
+                        else
+                        {
+                            <p class="text-muted">No stderr output captured.</p>
+                        }
+                    </div>
                 </div>
             }
-
-            @if (!string.IsNullOrEmpty(ViewModel.ValidationError))
-            {
-                <div class="alert alert-danger py-2 mb-3">
-                    @ViewModel.ValidationError
-                </div>
-            }
-
-            @if (ViewModel.TestState != ConnectionTestState.None)
-            {
-                <div class="test-result @GetTestResultClass()">
-                    @if (ViewModel.TestState == ConnectionTestState.Testing)
-                    {
-                        <span class="spinner-border spinner-border-sm"></span>
-                        <span>Testing configuration...</span>
-                    }
-                    else if (ViewModel.TestState == ConnectionTestState.Success)
-                    {
-                        <span class="test-icon">&#10003;</span>
-                        <span>Configuration test passed</span>
-                    }
-                    else if (ViewModel.TestState == ConnectionTestState.Failed)
-                    {
-                        <span class="test-icon">&#10007;</span>
-                        <span>@(ViewModel.TestErrorMessage ?? "Configuration test failed")</span>
-                    }
-                </div>
-            }
-        }
+        </div>
     </ChildContent>
     <FooterContent>
         <button type="button"
