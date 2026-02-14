@@ -27,6 +27,9 @@
     [Parameter] public int MaxWidth { get; set; } = 500;
     [Parameter] public string? Width { get; set; }
     [Parameter] public string? Height { get; set; }
+    [Parameter] public string? MinWidth { get; set; }
+    [Parameter] public string? MinHeight { get; set; }
+    [Parameter] public bool Resizable { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? FooterContent { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
@@ -38,9 +41,12 @@
         if (!string.IsNullOrEmpty(Width))
         {
             styles.Add($"width: {Width}");
-            styles.Add($"max-width: {Width}");
+            if (!Resizable)
+            {
+                styles.Add($"max-width: {Width}");
+            }
         }
-        else
+        else if (!Resizable)
         {
             styles.Add($"max-width: {MaxWidth}px");
         }
@@ -48,6 +54,22 @@
         if (!string.IsNullOrEmpty(Height))
         {
             styles.Add($"height: {Height}");
+        }
+
+        if (!string.IsNullOrEmpty(MinWidth))
+        {
+            styles.Add($"min-width: {MinWidth}");
+        }
+
+        if (!string.IsNullOrEmpty(MinHeight))
+        {
+            styles.Add($"min-height: {MinHeight}");
+        }
+
+        if (Resizable)
+        {
+            styles.Add("resize: horizontal");
+            styles.Add("overflow: hidden");
         }
 
         return string.Join("; ", styles);

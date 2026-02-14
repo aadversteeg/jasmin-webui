@@ -2,12 +2,13 @@
     display: flex;
     flex-direction: row;
     height: 100vh;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .main-content {
     flex: 1;
-    min-width: 0;
+    min-width: 300px;
     display: flex;
     flex-direction: column;
     overflow: hidden;

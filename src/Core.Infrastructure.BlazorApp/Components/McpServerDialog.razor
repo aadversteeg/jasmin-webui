@@ -1,16 +1,19 @@
 @inherits MvvmComponentBase<McpServerDialogViewModel>
 @using Core.Application.McpServers
 @using System.Text.Json
+@inject IJSRuntime JS
 
 <ModalDialog IsOpen="@ViewModel.IsOpen"
              Title="@ViewModel.DialogTitle"
-             MaxWidth="600"
-             Width="@(ViewModel.ShowStderrPanel ? "90vw" : null)"
+             Width="@DialogWidth"
              Height="90vh"
+             MinWidth="@DialogMinWidth"
+             MinHeight="500px"
+             Resizable="@(!ViewModel.ShowStderrPanel)"
              OnClose="() => ViewModel.CancelCommand.ExecuteAsync(null)">
     <ChildContent>
-        <div class="dialog-layout @(ViewModel.ShowStderrPanel ? "expanded" : "")">
-            <div class="form-panel">
+        <div id="mcp-server-dialog-layout" class="dialog-layout @(ViewModel.ShowStderrPanel ? "with-stderr" : "")">
+            <div class="form-panel" style="@GetFormPanelStyle()">
                 @if (ViewModel.IsLoading)
                 {
                     <div class="loading-state">
@@ -27,6 +30,11 @@
                                 disabled="@IsTesting"
                                 title="@(ViewModel.IsJsonMode ? "Switch to Form view" : "Switch to JSON view")">
                             @(ViewModel.IsJsonMode ? "Form" : "JSON")
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                @onclick="ToggleStderrPanel"
+                                title="@(ViewModel.ShowStderrPanel ? "Hide output panel" : "Show output panel")">
+                            @(ViewModel.ShowStderrPanel ? "Output \u25C0" : "Output \u25B6")
                         </button>
                     </div>
 
@@ -166,12 +174,13 @@
 
             @if (ViewModel.ShowStderrPanel)
             {
+                <div class="panel-resizer" @onmousedown="StartPanelResize"></div>
                 <div class="stderr-panel">
                     <div class="stderr-header">
                         <h6 class="panel-title">Stderr Output</h6>
                         <button class="btn btn-sm btn-outline-secondary"
-                                @onclick="() => ViewModel.CollapseStderrPanelCommand.Execute(null)"
-                                title="Hide panel">&#10005;</button>
+                                @onclick="ToggleStderrPanel"
+                                title="Hide output panel">&#9664;</button>
                     </div>
                     <div class="stderr-content">
                         @if (ViewModel.TestState == ConnectionTestState.Testing)
@@ -229,10 +238,66 @@
 </ModalDialog>
 
 @code {
+    private const int DefaultFormWidth = 568;
+
     private bool IsTesting => ViewModel.TestState == ConnectionTestState.Testing;
     private bool CanTest => !IsTesting && HasValidCommand();
     private bool CanSave => !IsTesting && HasValidCommand();
     private bool _showSaveWarning;
+    private int _formWidthPx = DefaultFormWidth;
+    private int _startFormWidth;
+
+    private string DialogWidth => ViewModel.ShowStderrPanel ? "90vw" : "600px";
+    private string DialogMinWidth => ViewModel.ShowStderrPanel ? "700px" : "400px";
+
+    private string GetFormPanelStyle()
+    {
+        if (ViewModel.ShowStderrPanel)
+        {
+            return $"width: {_formWidthPx}px;";
+        }
+        return "";
+    }
+
+    private async Task ToggleStderrPanel()
+    {
+        if (!ViewModel.ShowStderrPanel)
+        {
+            await CaptureFormWidth();
+        }
+        ViewModel.ShowStderrPanel = !ViewModel.ShowStderrPanel;
+    }
+
+    private async Task CaptureFormWidth()
+    {
+        var width = await JS.InvokeAsync<int>("dialogHelper.getElementWidth", "mcp-server-dialog-layout");
+        if (width > 0)
+        {
+            _formWidthPx = width;
+        }
+    }
+
+    private async Task StartPanelResize(MouseEventArgs e)
+    {
+        _startFormWidth = _formWidthPx;
+        await JS.InvokeVoidAsync("slidePanelResize.start",
+            DotNetObjectReference.Create(this),
+            (int)e.ClientX,
+            _formWidthPx,
+            "left");
+    }
+
+    [JSInvokable]
+    public void UpdateWidth(int deltaX)
+    {
+        _formWidthPx = Math.Clamp(_startFormWidth + deltaX, 200, 1200);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void EndResize()
+    {
+    }
 
     private void OnJsonInputChanged(ChangeEventArgs e)
     {
@@ -347,6 +412,10 @@
             {
                 return;
             }
+        }
+        if (!ViewModel.ShowStderrPanel)
+        {
+            await CaptureFormWidth();
         }
         await ViewModel.TestConfigurationCommand.ExecuteAsync(null);
     }

@@ -36,6 +36,12 @@
     [Parameter]
     public string? AriaLabel { get; set; }
 
+    [Parameter]
+    public int MinWidth { get; set; } = 150;
+
+    [Parameter]
+    public int MaxWidth { get; set; } = 800;
+
     private string PositionClass => Position == PanelPosition.Left ? "panel-left" : "panel-right";
     private string ResizeHandleClass => Position == PanelPosition.Left ? "handle-right" : "handle-left";
 
@@ -65,6 +71,7 @@
             newWidth = _startWidth - deltaX;
         }
 
+        newWidth = Math.Clamp(newWidth, MinWidth, MaxWidth);
         await WidthChanged.InvokeAsync(newWidth);
     }
 

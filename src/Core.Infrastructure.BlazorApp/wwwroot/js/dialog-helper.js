@@ -15,5 +15,9 @@ window.dialogHelper = {
     },
     close: (dialogEl) => {
         if (dialogEl.open) dialogEl.close();
+    },
+    getElementWidth: (elementId) => {
+        const el = document.getElementById(elementId);
+        return el ? el.offsetWidth : 0;
     }
 };

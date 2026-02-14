@@ -23,6 +23,7 @@
 .view-toggle-row {
     display: flex;
     justify-content: flex-end;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
 }
 
@@ -56,22 +57,32 @@ textarea.form-control {
 
 .dialog-layout {
     height: 100%;
-    overflow-y: auto;
-}
-
-.dialog-layout.expanded {
     display: flex;
     flex-direction: row;
-    gap: 0;
-    overflow-y: hidden;
 }
 
-.dialog-layout.expanded .form-panel {
-    width: 568px;
-    min-width: 568px;
+.form-panel {
+    flex: 1;
     overflow-y: auto;
-    padding-right: 1rem;
-    border-right: 1px solid var(--color-border);
+    min-width: 0;
+}
+
+.dialog-layout.with-stderr .form-panel {
+    flex: none;
+    padding-right: var(--space-3);
+}
+
+.panel-resizer {
+    width: 6px;
+    background-color: var(--color-surface-3);
+    cursor: ew-resize;
+    flex-shrink: 0;
+    transition: background-color 0.2s;
+}
+
+.panel-resizer:hover,
+.panel-resizer:active {
+    background-color: var(--color-primary);
 }
 
 .stderr-panel {
@@ -79,7 +90,7 @@ textarea.form-control {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    padding-left: 1rem;
+    padding-left: var(--space-3);
 }
 
 .stderr-header {
