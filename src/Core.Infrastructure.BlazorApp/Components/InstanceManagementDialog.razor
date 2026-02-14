@@ -89,16 +89,22 @@
             </LeftContent>
             <RightHeader>
                 <div class="d-flex align-items-center justify-content-between w-100">
-                    <ul class="nav nav-tabs instance-tabs mb-0">
-                        <li class="nav-item">
+                    <ul class="nav nav-tabs instance-tabs mb-0" role="tablist">
+                        <li class="nav-item" role="presentation">
                             <a class="nav-link @(_activeTab == LogsTab ? "active" : "")"
-                               href="#" @onclick="() => SwitchTab(LogsTab)" @onclick:preventDefault>
+                               href="#"
+                               role="tab"
+                               aria-selected="@((_activeTab == LogsTab).ToString().ToLowerInvariant())"
+                               @onclick="() => SwitchTab(LogsTab)" @onclick:preventDefault>
                                 Logs
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item" role="presentation">
                             <a class="nav-link @(_activeTab == EventsTab ? "active" : "")"
-                               href="#" @onclick="() => SwitchTab(EventsTab)" @onclick:preventDefault>
+                               href="#"
+                               role="tab"
+                               aria-selected="@((_activeTab == EventsTab).ToString().ToLowerInvariant())"
+                               @onclick="() => SwitchTab(EventsTab)" @onclick:preventDefault>
                                 Events
                                 @if (GetInstanceEventCount() > 0)
                                 {

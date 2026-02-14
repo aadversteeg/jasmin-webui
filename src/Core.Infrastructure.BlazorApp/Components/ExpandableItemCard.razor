@@ -1,6 +1,6 @@
 @using Core.Application.McpServers
 
-<div class="expandable-card @(IsExpanded ? "expanded" : "")" @onclick="HandleClick">
+<article class="expandable-card @(IsExpanded ? "expanded" : "")" @onclick="HandleClick">
     <div class="d-flex justify-content-between align-items-start">
         <div>
             <code class="item-name">@Name</code>
@@ -11,7 +11,14 @@
         </div>
         <div class="d-flex align-items-center gap-2">
             @HeaderActions
-            <span class="expand-icon">@(IsExpanded ? "\u25B2" : "\u25BC")</span>
+            <button type="button"
+                    class="expand-icon btn-unstyled"
+                    aria-expanded="@IsExpanded.ToString().ToLowerInvariant()"
+                    aria-label="@(IsExpanded ? "Collapse details" : "Expand details")"
+                    @onclick="HandleClick"
+                    @onclick:stopPropagation="true">
+                @(IsExpanded ? "\u25B2" : "\u25BC")
+            </button>
         </div>
     </div>
     @if (!IsExpanded && !string.IsNullOrEmpty(Description))
@@ -31,7 +38,7 @@
             @ChildContent
         </div>
     }
-</div>
+</article>
 
 @code {
     [Parameter]

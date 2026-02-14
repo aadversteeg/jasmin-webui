@@ -61,3 +61,13 @@ html, body {
 .tab-pane-content h5 {
     margin-bottom: 0.5rem;
 }
+
+/* Utility: unstyled button for expand/collapse icons */
+.btn-unstyled {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}

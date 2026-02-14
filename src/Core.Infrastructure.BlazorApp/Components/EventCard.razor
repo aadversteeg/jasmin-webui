@@ -1,16 +1,22 @@
 @using System.Text.Json
 @using Core.Domain.Events
 
-<div class="event-card @GetEventClass() @(IsExpanded ? "expanded" : "")" @onclick="ToggleExpand">
-    <div class="d-flex justify-content-between align-items-start">
-        <div>
-            <span class="badge @GetBadgeClass() event-type-badge me-2">@GetEventTypeDisplay()</span>
-            <span class="event-server-name">@Event.ServerName</span>
-        </div>
-        <div class="d-flex align-items-center">
-            <span class="event-timestamp me-2">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
-            <span class="expand-icon">@(IsExpanded ? "\u25B2" : "\u25BC")</span>
-        </div>
+<article class="event-card @GetEventClass() @(IsExpanded ? "expanded" : "")" @onclick="ToggleExpand">
+    <div class="d-flex justify-content-between align-items-center">
+        <h6 class="event-heading mb-0">@GetEventTypeDisplay()</h6>
+        <button type="button"
+                class="expand-icon btn-unstyled"
+                aria-expanded="@IsExpanded.ToString().ToLowerInvariant()"
+                aria-label="@(IsExpanded ? "Collapse event details" : "Expand event details")"
+                @onclick="ToggleExpand"
+                @onclick:stopPropagation="true">
+            @(IsExpanded ? "\u25B2" : "\u25BC")
+        </button>
+    </div>
+    <div class="event-meta">
+        <span class="badge @GetBadgeClass() event-type-badge">@GetBadgeLabel()</span>
+        <span class="event-server-name">@Event.ServerName</span>
+        <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>
     </div>
     @if (!IsExpanded && (Event.InstanceId != null || Event.RequestId != null))
     {
@@ -131,7 +137,7 @@
             </div>
         </div>
     }
-</div>
+</article>
 
 @code {
     [Parameter]
@@ -198,6 +204,32 @@
         McpServerEventType.ToolInvocationAccepted => "bg-warning text-dark",
 
         _ => "bg-info"
+    };
+
+    private string GetBadgeLabel() => Event.EventType switch
+    {
+        McpServerEventType.StartFailed or
+        McpServerEventType.StopFailed or
+        McpServerEventType.ToolsRetrievalFailed or
+        McpServerEventType.PromptsRetrievalFailed or
+        McpServerEventType.ResourcesRetrievalFailed or
+        McpServerEventType.ToolInvocationFailed => "Error",
+
+        McpServerEventType.Started or
+        McpServerEventType.ToolsRetrieved or
+        McpServerEventType.PromptsRetrieved or
+        McpServerEventType.ResourcesRetrieved or
+        McpServerEventType.ToolInvoked => "Success",
+
+        McpServerEventType.Starting or
+        McpServerEventType.Stopping or
+        McpServerEventType.ToolsRetrieving or
+        McpServerEventType.PromptsRetrieving or
+        McpServerEventType.ResourcesRetrieving or
+        McpServerEventType.ToolInvoking or
+        McpServerEventType.ToolInvocationAccepted => "In Progress",
+
+        _ => "Info"
     };
 
     private string GetEventTypeDisplay() => Event.EventType switch

@@ -1,6 +1,8 @@
 @inject IJSRuntime JS
 
-<div class="slide-panel @PositionClass" style="width: @(Width)px;">
+<aside class="slide-panel @PositionClass" style="width: @(Width)px;"
+       role="@(IsNavigation ? "navigation" : null)"
+       aria-label="@AriaLabel">
     <div class="resize-handle @ResizeHandleClass" @onmousedown="StartResize"></div>
 
     <HeaderBar>
@@ -10,7 +12,7 @@
     <div class="panel-body">
         @ChildContent
     </div>
-</div>
+</aside>
 
 @code {
     [Parameter]
@@ -27,6 +29,12 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool IsNavigation { get; set; }
+
+    [Parameter]
+    public string? AriaLabel { get; set; }
 
     private string PositionClass => Position == PanelPosition.Left ? "panel-left" : "panel-right";
     private string ResizeHandleClass => Position == PanelPosition.Left ? "handle-right" : "handle-left";

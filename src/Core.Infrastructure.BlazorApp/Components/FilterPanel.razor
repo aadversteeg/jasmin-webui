@@ -1,7 +1,12 @@
-<div class="filter-panel">
-    <div class="filter-panel-header" @onclick="ToggleExpanded">
+<section class="filter-panel">
+    <div class="filter-panel-header"
+         @onclick="ToggleExpanded"
+         @onkeydown="HandleHeaderKeyDown"
+         role="button"
+         tabindex="0"
+         aria-expanded="@IsExpanded.ToString().ToLowerInvariant()">
         <div class="d-flex align-items-center gap-2">
-            <span class="expand-icon">@(IsExpanded ? "▼" : "▶")</span>
+            <span class="expand-icon" aria-hidden="true">@(IsExpanded ? "▼" : "▶")</span>
             <span class="filter-panel-title">@Title</span>
         </div>
         <div class="d-flex align-items-center gap-1" @onclick:stopPropagation="true">
@@ -51,7 +56,7 @@
             }
         </div>
     }
-</div>
+</section>
 
 @code {
     [Parameter, EditorRequired]
@@ -76,5 +81,13 @@
     {
         IsExpanded = !IsExpanded;
         await IsExpandedChanged.InvokeAsync(IsExpanded);
+    }
+
+    private async Task HandleHeaderKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            await ToggleExpanded();
+        }
     }
 }

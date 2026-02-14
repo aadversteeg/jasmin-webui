@@ -1,27 +1,26 @@
-@if (IsOpen)
-{
-    <div class="modal-backdrop"></div>
-    <div class="modal-container" @onclick="HandleBackdropClick" @onkeydown="HandleKeyDown" tabindex="-1" @ref="_containerRef">
-        <div class="modal-dialog" style="@GetDialogStyle()" @onclick:stopPropagation="true">
-            <div class="modal-content" style="@GetContentStyle()">
-                <div class="modal-header">
-                    <h5 class="modal-title">@Title</h5>
-                    <button type="button" class="btn-close" @onclick="HandleClose"></button>
-                </div>
-                <div class="modal-body" style="@GetBodyStyle()">
-                    @ChildContent
-                </div>
-                <div class="modal-footer">
-                    @FooterContent
-                </div>
-            </div>
+@inject IJSRuntime JS
+@implements IDisposable
+
+<dialog class="modal-dialog-element" style="@GetDialogStyle()" @ref="_dialogRef">
+    <div class="modal-content" style="@GetContentStyle()">
+        <div class="modal-header">
+            <h5 class="modal-title">@Title</h5>
+            <button type="button" class="btn-close" @onclick="HandleClose" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="@GetBodyStyle()">
+            @ChildContent
+        </div>
+        <div class="modal-footer">
+            @FooterContent
         </div>
     </div>
-}
+</dialog>
 
 @code {
-    private ElementReference _containerRef;
+    private ElementReference _dialogRef;
+    private DotNetObjectReference<ModalDialog>? _dotNetRef;
     private bool _wasOpen;
+    private bool _jsInitialized;
 
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public string Title { get; set; } = "";
@@ -74,32 +73,46 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("dialogHelper.init", _dialogRef, _dotNetRef);
+            _jsInitialized = true;
+        }
+
+        if (!_jsInitialized) return;
+
         if (IsOpen && !_wasOpen)
         {
             _wasOpen = true;
-            await _containerRef.FocusAsync();
+            await JS.InvokeVoidAsync("dialogHelper.showModal", _dialogRef);
         }
         else if (!IsOpen && _wasOpen)
         {
             _wasOpen = false;
+            await JS.InvokeVoidAsync("dialogHelper.close", _dialogRef);
         }
     }
 
-    private async Task HandleBackdropClick()
+    [JSInvokable]
+    public async Task OnDialogCancel()
     {
         await OnClose.InvokeAsync();
     }
 
-    private async Task HandleKeyDown(KeyboardEventArgs e)
+    [JSInvokable]
+    public async Task OnDialogBackdropClick()
     {
-        if (e.Key == "Escape")
-        {
-            await OnClose.InvokeAsync();
-        }
+        await OnClose.InvokeAsync();
     }
 
     private async Task HandleClose()
     {
         await OnClose.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
     }
 }

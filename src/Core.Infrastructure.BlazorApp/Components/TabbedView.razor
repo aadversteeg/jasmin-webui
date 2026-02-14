@@ -1,20 +1,24 @@
 @inject INavigationService NavigationService
 
 <div class="tabbed-view">
-    <ul class="nav nav-tabs">
-        @foreach (var tab in VisibleTabs)
-        {
-            <li class="nav-item">
-                <a class="nav-link @(tab.Id == ActiveTabId ? "active" : "")"
-                   href="@tab.Route"
-                   @onclick="() => OnTabClick(tab)"
-                   @onclick:preventDefault>
-                    @tab.Label
-                </a>
-            </li>
-        }
-    </ul>
-    <div class="tab-content">
+    <nav aria-label="@AriaLabel">
+        <ul class="nav nav-tabs" role="tablist">
+            @foreach (var tab in VisibleTabs)
+            {
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link @(tab.Id == ActiveTabId ? "active" : "")"
+                       href="@tab.Route"
+                       role="tab"
+                       aria-selected="@((tab.Id == ActiveTabId).ToString().ToLowerInvariant())"
+                       @onclick="() => OnTabClick(tab)"
+                       @onclick:preventDefault>
+                        @tab.Label
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+    <div class="tab-content" role="tabpanel">
         @ChildContent
     </div>
 </div>
@@ -28,6 +32,9 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Tabs";
 
     private IEnumerable<TabItem> VisibleTabs => Tabs.Where(t => t.IsVisible);
 

@@ -62,7 +62,7 @@
     }
     else
     {
-        <TabbedView Tabs="ViewModel.Tabs" ActiveTabId="@ViewModel.ActiveTab">
+        <TabbedView Tabs="ViewModel.Tabs" ActiveTabId="@ViewModel.ActiveTab" AriaLabel="Server detail sections">
             @switch (ViewModel.ActiveTab)
             {
                 case "configuration":
