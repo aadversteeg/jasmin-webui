@@ -146,6 +146,21 @@
                             }
                         </div>
                     }
+
+                    @if (_showSaveWarning)
+                    {
+                        <div class="alert alert-warning save-warning">
+                            <span>Configuration has not been tested. Save anyway?</span>
+                            <div class="save-warning-actions">
+                                <button class="btn btn-sm btn-warning" @onclick="Save">
+                                    Save Without Testing
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showSaveWarning = false">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    }
                 }
             </div>
 
@@ -216,7 +231,8 @@
 @code {
     private bool IsTesting => ViewModel.TestState == ConnectionTestState.Testing;
     private bool CanTest => !IsTesting && HasValidCommand();
-    private bool CanSave => ViewModel.TestState == ConnectionTestState.Success;
+    private bool CanSave => !IsTesting && HasValidCommand();
+    private bool _showSaveWarning;
 
     private void OnJsonInputChanged(ChangeEventArgs e)
     {
@@ -323,6 +339,7 @@
 
     private async Task TestConfiguration()
     {
+        _showSaveWarning = false;
         if (ViewModel.IsJsonMode)
         {
             ViewModel.SyncJsonToForm();
@@ -344,11 +361,20 @@
                 return;
             }
         }
+
+        if (ViewModel.TestState != ConnectionTestState.Success && !_showSaveWarning)
+        {
+            _showSaveWarning = true;
+            return;
+        }
+
+        _showSaveWarning = false;
         await ViewModel.SaveCommand.ExecuteAsync(null);
     }
 
     private async Task Cancel()
     {
+        _showSaveWarning = false;
         await ViewModel.CancelCommand.ExecuteAsync(null);
     }
 

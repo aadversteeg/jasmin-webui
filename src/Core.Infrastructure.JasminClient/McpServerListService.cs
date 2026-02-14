@@ -132,7 +132,8 @@ public class McpServerListService : IMcpServerListService
                 break;
 
             case McpServerEventType.StartFailed:
-                SetStatus(evt.ServerName, McpServerStatus.Failed);
+                var errorMessage = evt.Errors?.FirstOrDefault()?.Message;
+                SetStatus(evt.ServerName, McpServerStatus.Failed, errorMessage);
                 break;
 
             case McpServerEventType.ToolsRetrieved:
@@ -180,7 +181,7 @@ public class McpServerListService : IMcpServerListService
     {
         if (_servers.TryGetValue(serverName, out var server))
         {
-            _servers[serverName] = server with { InstanceCount = server.InstanceCount + 1 };
+            _servers[serverName] = server with { InstanceCount = server.InstanceCount + 1, LastErrorMessage = null };
             ServersChanged?.Invoke();
         }
         else
@@ -200,11 +201,11 @@ public class McpServerListService : IMcpServerListService
         }
     }
 
-    private void SetStatus(string serverName, McpServerStatus status)
+    private void SetStatus(string serverName, McpServerStatus status, string? errorMessage = null)
     {
         if (_servers.TryGetValue(serverName, out var server))
         {
-            _servers[serverName] = server with { Status = status };
+            _servers[serverName] = server with { Status = status, LastErrorMessage = errorMessage };
             ServersChanged?.Invoke();
         }
     }

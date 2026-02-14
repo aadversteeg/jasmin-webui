@@ -123,7 +123,8 @@
     {
         return await ConfirmDialogVM.ShowAsync(
             "Delete Server",
-            $"Are you sure you want to delete '{serverName}'?");
+            $"This will permanently remove '{serverName}' and its configuration. Any running instances will be stopped.",
+            "Delete Server");
     }
 
     private async Task HandleDeleteRequest(string serverName)

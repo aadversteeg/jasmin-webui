@@ -104,3 +104,25 @@
 .action-btn:hover {
     opacity: 1;
 }
+
+.action-btn-danger:hover {
+    color: var(--color-danger) !important;
+}
+
+.server-error-row {
+    display: flex;
+    align-items: center;
+    margin-top: var(--space-1);
+    padding-left: calc(10px + 0.5rem);
+    gap: var(--space-1);
+}
+
+.error-text {
+    font-size: 0.7rem;
+    color: var(--color-danger);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}

@@ -19,66 +19,64 @@
             <LeftHeader>
                 <h6 class="panel-title">Input</h6>
                 <div class="toolbar-row">
-                    @* History navigation *@
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary"
-                                disabled="@(!ViewModel.CanGoHistoryUp)"
-                                @onclick="HandleHistoryUp"
-                                title="Older history (Alt+Up)">
-                            &#9650;
+                    @* History navigation - secondary group *@
+                    <div class="history-group">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary"
+                                    disabled="@(!ViewModel.CanGoHistoryUp)"
+                                    @onclick="HandleHistoryUp"
+                                    title="Older history (Alt+Up)">
+                                &#9650;
+                            </button>
+                            <button class="btn btn-outline-secondary"
+                                    disabled="@(!ViewModel.CanGoHistoryDown)"
+                                    @onclick="HandleHistoryDown"
+                                    title="Newer history (Alt+Down)">
+                                &#9660;
+                            </button>
+                        </div>
+                        <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
+                        @if (ViewModel.HistoryCount > 0)
+                        {
+                            <button class="btn btn-link btn-sm clear-history-btn"
+                                    @onclick="HandleClearHistory"
+                                    title="Clear all history for this tool">
+                                Clear History
+                            </button>
+                        }
+                    </div>
+
+                    @* Primary actions *@
+                    <div class="primary-actions">
+                        <button class="btn btn-outline-secondary btn-sm"
+                                @onclick="HandleClearDraft"
+                                title="Clear inputs (reset to defaults)">
+                            Clear
                         </button>
-                        <button class="btn btn-outline-secondary"
-                                disabled="@(!ViewModel.CanGoHistoryDown)"
-                                @onclick="HandleHistoryDown"
-                                title="Newer history (Alt+Down)">
-                            &#9660;
+                        <button class="btn btn-outline-secondary btn-sm"
+                                @onclick="ToggleInputMode"
+                                title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
+                            @(_isJsonMode ? "Form" : "JSON")
+                        </button>
+                        <button class="btn btn-primary btn-sm"
+                                @onclick="HandleInvoke"
+                                disabled="@(!CanInvoke())">
+                            @if (ViewModel.IsStartingInstance)
+                            {
+                                <span class="spinner spinner-sm" role="status"></span>
+                                <span>Starting...</span>
+                            }
+                            else if (ViewModel.IsInvoking)
+                            {
+                                <span class="spinner spinner-sm" role="status"></span>
+                                <span>Invoking...</span>
+                            }
+                            else
+                            {
+                                <span>Invoke</span>
+                            }
                         </button>
                     </div>
-                    <span class="small text-muted">@ViewModel.HistoryPositionDisplay</span>
-
-                    <div class="vr"></div>
-
-                    @* Clear buttons *@
-                    <button class="btn btn-outline-secondary btn-sm"
-                            @onclick="HandleClearDraft"
-                            title="Clear inputs (reset to defaults)">
-                        Clear
-                    </button>
-                    @if (ViewModel.HistoryCount > 0)
-                    {
-                        <button class="btn btn-outline-danger btn-sm"
-                                @onclick="HandleClearHistory"
-                                title="Clear all history for this tool">
-                            Clear History
-                        </button>
-                    }
-
-                    <div class="vr"></div>
-
-                    @* View toggle and Invoke *@
-                    <button class="btn btn-outline-secondary btn-sm"
-                            @onclick="ToggleInputMode"
-                            title="@(_isJsonMode ? "Switch to Form view" : "Switch to JSON view")">
-                        @(_isJsonMode ? "Form" : "JSON")
-                    </button>
-                    <button class="btn btn-primary btn-sm"
-                            @onclick="HandleInvoke"
-                            disabled="@(!CanInvoke())">
-                        @if (ViewModel.IsStartingInstance)
-                        {
-                            <span class="spinner spinner-sm" role="status"></span>
-                            <span>Starting...</span>
-                        }
-                        else if (ViewModel.IsInvoking)
-                        {
-                            <span class="spinner spinner-sm" role="status"></span>
-                            <span>Invoking...</span>
-                        }
-                        else
-                        {
-                            <span>Invoke</span>
-                        }
-                    </button>
                 </div>
             </LeftHeader>
             <LeftContent>

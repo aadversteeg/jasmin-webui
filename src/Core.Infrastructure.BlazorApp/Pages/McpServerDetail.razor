@@ -19,8 +19,8 @@
         <div class="header-left">
             <button class="btn btn-outline-secondary"
                     @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
-                    title="@(LeftPanelVM.IsPanelOpen ? "Close servers" : "Open servers")">
-                @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+                    title="@(LeftPanelVM.IsPanelOpen ? "Close servers panel" : "Open servers panel")">
+                @(LeftPanelVM.IsPanelOpen ? "◀ Servers" : "Servers ▶")
             </button>
             <button class="btn btn-outline-secondary" @onclick="NavigateHome" title="Back to events">
                 <svg width="1em" height="1em" viewBox="0 0 24 24"><path d="M12 3L4 9v12h16V9l-8-6z" fill="currentColor"/><rect x="10" y="13" width="4" height="8" fill="white"/></svg>
@@ -34,8 +34,8 @@
         <div class="header-right">
             <button class="btn btn-outline-secondary"
                     @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
-                    title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
-                @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
+                    title="@(SidePanelVM.IsPanelOpen ? "Close details panel" : "Open details panel")">
+                @(SidePanelVM.IsPanelOpen ? "Details ▶" : "◀ Details")
             </button>
         </div>
     </div>

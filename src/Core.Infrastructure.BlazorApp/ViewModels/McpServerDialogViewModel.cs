@@ -288,7 +288,8 @@ public partial class McpServerDialogViewModel : ViewModelBase
         ServerSaved?.Invoke(ServerName);
     }
 
-    private bool CanSave() => TestState == ConnectionTestState.Success;
+    private bool CanSave() => TestState != ConnectionTestState.Testing
+        && !string.IsNullOrWhiteSpace(Command);
 
     private async Task RefreshMetadataForServerAsync(string serverUrl, string serverName)
     {
@@ -327,6 +328,7 @@ public partial class McpServerDialogViewModel : ViewModelBase
     partial void OnCommandChanged(string value)
     {
         TestConfigurationCommand.NotifyCanExecuteChanged();
+        SaveCommand.NotifyCanExecuteChanged();
         // Reset test state when form changes
         if (TestState == ConnectionTestState.Success)
         {

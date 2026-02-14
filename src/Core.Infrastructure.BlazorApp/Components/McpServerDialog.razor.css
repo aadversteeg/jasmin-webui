@@ -105,3 +105,14 @@ textarea.form-control {
     font-size: 0.875rem;
     margin-bottom: 0;
 }
+
+.save-warning {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.save-warning-actions {
+    display: flex;
+    gap: var(--space-2);
+}

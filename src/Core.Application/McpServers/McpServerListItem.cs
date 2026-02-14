@@ -8,4 +8,5 @@ public record McpServerListItem(
     McpServerStatus Status,
     int InstanceCount,
     DateTimeOffset? LastVerifiedAt = null,
-    DateTimeOffset? LastMetadataUpdateAt = null);
+    DateTimeOffset? LastMetadataUpdateAt = null,
+    string? LastErrorMessage = null);

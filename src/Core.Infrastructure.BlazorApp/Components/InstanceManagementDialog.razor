@@ -65,8 +65,8 @@
                                  @onclick="() => HandleSelectInstance(instance.InstanceId)">
                                 <div class="instance-row">
                                     <div class="instance-info">
-                                        <div class="instance-id font-monospace">@instance.InstanceId</div>
-                                        <small class="text-muted">Started: @FormatDateTime(instance.StartedAt)</small>
+                                        <div class="instance-id font-monospace" title="@instance.InstanceId">@FormatShortId(instance.InstanceId)</div>
+                                        <small class="text-muted">Started @FormatTime(instance.StartedAt)</small>
                                     </div>
                                     <button class="btn btn-outline-danger btn-sm"
                                             @onclick="() => HandleStop(instance.InstanceId)"
@@ -387,6 +387,16 @@
     private string FormatDateTime(DateTimeOffset dateTime)
     {
         return dateTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private static string FormatShortId(string instanceId)
+    {
+        return instanceId.Length >= 8 ? instanceId[..8] + "..." : instanceId;
+    }
+
+    private static string FormatTime(DateTimeOffset dateTime)
+    {
+        return dateTime.ToLocalTime().ToString("HH:mm:ss");
     }
 
     private async Task HandleSelectInstance(string instanceId)

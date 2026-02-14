@@ -1,8 +1,8 @@
 @using System.Text.Json
 @using Core.Domain.Events
 
-<article class="event-card @GetEventClass() @(IsExpanded ? "expanded" : "")" @onclick="ToggleExpand">
-    <div class="event-header">
+<article class="event-card @GetEventClass() @(IsExpanded ? "expanded" : "")">
+    <div class="event-header" @onclick="ToggleExpand">
         <h6 class="event-heading">@GetEventTypeDisplay()</h6>
         <button type="button"
                 class="expand-icon btn-unstyled"
@@ -13,7 +13,7 @@
             @(IsExpanded ? "\u25B2" : "\u25BC")
         </button>
     </div>
-    <div class="event-meta">
+    <div class="event-meta" @onclick="ToggleExpand">
         <span class="badge @GetBadgeClass() event-type-badge">@GetBadgeLabel()</span>
         <span class="event-server-name">@Event.ServerName</span>
         <span class="event-timestamp">@Event.Timestamp.ToString("HH:mm:ss.fff")</span>

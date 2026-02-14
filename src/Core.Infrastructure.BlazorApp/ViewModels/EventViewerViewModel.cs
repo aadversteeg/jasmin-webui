@@ -136,6 +136,28 @@ public partial class EventViewerViewModel : ViewModelBase, IDisposable
         _appState.ServerUrl = null;
     }
 
+    /// <summary>
+    /// Attempts to reconnect to the current server URL.
+    /// </summary>
+    public async Task ReconnectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ServerUrl))
+        {
+            return;
+        }
+
+        LastError = null;
+        await ConnectAsync();
+    }
+
+    /// <summary>
+    /// Dismisses the current error message.
+    /// </summary>
+    public void DismissError()
+    {
+        LastError = null;
+    }
+
     partial void OnServerUrlChanged(string value)
     {
         _ = SaveUrlAsync();

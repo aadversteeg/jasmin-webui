@@ -11,13 +11,25 @@
 
 <HeaderBar>
     <div class="header-toolbar">
+        <span class="app-brand">Jasmin</span>
         <button class="btn btn-outline-secondary"
                 @onclick="() => LeftPanelVM.TogglePanelCommand.Execute(null)"
-                title="@(LeftPanelVM.IsPanelOpen ? "Close details" : "Open details")">
-            @(LeftPanelVM.IsPanelOpen ? "◀" : "▶")
+                title="@(LeftPanelVM.IsPanelOpen ? "Close servers panel" : "Open servers panel")">
+            @(LeftPanelVM.IsPanelOpen ? "◀ Servers" : "Servers ▶")
         </button>
         <span class="connection-indicator @GetConnectionClass()" title="@GetConnectionText()"></span>
         <span class="text-muted small">@GetConnectionText()</span>
+        @if (ViewModel.ConnectionState == ConnectionState.Error || ViewModel.ConnectionState == ConnectionState.Disconnected)
+        {
+            @if (!string.IsNullOrWhiteSpace(ViewModel.ServerUrl))
+            {
+                <button class="btn btn-sm btn-outline-secondary"
+                        @onclick="HandleReconnect"
+                        title="Attempt to reconnect">
+                    Reconnect
+                </button>
+            }
+        }
         <div class="header-actions">
             <button class="btn btn-outline-secondary"
                     @onclick="OpenConfiguration"
@@ -29,16 +41,26 @@
             </button>
             <button class="btn btn-outline-secondary"
                     @onclick="() => SidePanelVM.TogglePanelCommand.Execute(null)"
-                    title="@(SidePanelVM.IsPanelOpen ? "Close panel" : "Open panel")">
-                @(SidePanelVM.IsPanelOpen ? "▶" : "◀")
+                    title="@(SidePanelVM.IsPanelOpen ? "Close filters panel" : "Open filters panel")">
+                @(SidePanelVM.IsPanelOpen ? "Filters ▶" : "◀ Filters")
             </button>
         </div>
     </div>
     @if (ViewModel.LastError != null)
     {
         <div class="header-error">
-            <div class="alert alert-danger small">
-                @ViewModel.LastError
+            <div class="alert alert-danger small error-alert-row">
+                <span class="error-message-text">@ViewModel.LastError</span>
+                <div class="error-actions">
+                    <button class="btn btn-sm btn-outline-danger"
+                            @onclick="HandleReconnect">
+                        Reconnect
+                    </button>
+                    <button class="btn-unstyled error-dismiss"
+                            @onclick="DismissError"
+                            title="Dismiss error"
+                            aria-label="Dismiss error">&times;</button>
+                </div>
             </div>
         </div>
     }
@@ -136,6 +158,18 @@
     {
         if (_isDisposed) return;
         _ = ViewModel.HandleDisconnectAsync();
+    }
+
+    private async Task HandleReconnect()
+    {
+        if (_isDisposed) return;
+        await ViewModel.ReconnectAsync();
+    }
+
+    private void DismissError()
+    {
+        if (_isDisposed) return;
+        ViewModel.DismissError();
     }
 
     private async Task OnScroll()

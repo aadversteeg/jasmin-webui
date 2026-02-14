@@ -7,17 +7,18 @@
             @onchange="OnSelectionChanged"
             disabled="@Disabled">
         <optgroup label="Start new instance">
-            <option value="per-invoke">Start new (per invoke)</option>
-            <option value="per-dialog">Start new (per dialog)</option>
-            <option value="persistent">Start new (persistent)</option>
+            <option value="per-invoke">New for each call</option>
+            <option value="per-dialog">New while dialog open</option>
+            <option value="persistent">New, keep running</option>
         </optgroup>
         @if (RunningInstances.Count > 0)
         {
             <optgroup label="Use existing instance">
                 @foreach (var instance in RunningInstances)
                 {
-                    <option value="@($"instance:{instance.InstanceId}")">
-                        @instance.InstanceId (@FormatStartedAt(instance.StartedAt))
+                    <option value="@($"instance:{instance.InstanceId}")"
+                            title="@instance.InstanceId">
+                        @FormatShortId(instance.InstanceId) (@FormatStartedAt(instance.StartedAt))
                     </option>
                 }
             </optgroup>
@@ -88,6 +89,11 @@
             await ModeChanged.InvokeAsync(mode);
             await SelectedInstanceIdChanged.InvokeAsync(null);
         }
+    }
+
+    private static string FormatShortId(string instanceId)
+    {
+        return instanceId.Length >= 8 ? instanceId[..8] + "..." : instanceId;
     }
 
     private string FormatStartedAt(DateTimeOffset startedAt)
